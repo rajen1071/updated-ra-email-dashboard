@@ -22,7 +22,7 @@ async function getAccessToken() {
     return cachedToken;
   }
 
-  const baseUrl = process.env.MAUTIC_BASE_URL;
+  const baseUrl = (process.env.MAUTIC_BASE_URL || "").replace(/\/+$/, "");
   const clientId = process.env.MAUTIC_CLIENT_ID;
   const clientSecret = process.env.MAUTIC_CLIENT_SECRET;
 
@@ -58,7 +58,7 @@ async function getAccessToken() {
  * Call any Mautic REST API path, e.g. mauticFetch("/api/contacts?limit=1")
  */
 export async function mauticFetch(path) {
-  const baseUrl = process.env.MAUTIC_BASE_URL;
+  const baseUrl = (process.env.MAUTIC_BASE_URL || "").replace(/\/+$/, "");
   const token = await getAccessToken();
 
   const res = await fetch(`${baseUrl}${path}`, {
