@@ -55,6 +55,48 @@ async function getAccessToken() {
 }
 
 /**
+ * Fetch daily Sent/Opened/Bounced counts for one email over the last
+ * N days, using Mautic's generic Stats API (GET /api/stats/email_stats).
+ * NOTE: Mautic does NOT expose a public "/api/emails/{id}/stats"
+ * time-series endpoint — the daily chart in the Mautic admin UI is
+ * built internally. This is the public-API equivalent: pull the raw
+ * email_stats rows for a bounded date window and aggregate by day
+ * ourselves (pulling ALL-time rows for a high-volume email would be
+ * far too slow/large for a live request).
+ */
+export async function getEmailDailyTrend(emailId, days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const sinceStr = since.toISOString().slice(0, 10);
+
+  const params = new URLSearchParams();
+  params.set("where[0][col]", "email_id");
+  params.set("where[0][expr]", "eq");
+  params.set("where[0][val]", String(emailId));
+  params.set("where[1][col]", "date_sent");
+  params.set("where[1][expr]", "gte");
+  params.set("where[1][val]", sinceStr);
+  params.set("order[0][col]", "date_sent");
+  params.set("order[0][dir]", "asc");
+  params.set("limit", "5000");
+
+  const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
+  const rows = data?.stats || [];
+
+  const byDate = {};
+  for (const row of rows) {
+    const day = (row.date_sent || "").slice(0, 10);
+    if (!day) continue;
+    if (!byDate[day]) byDate[day] = { date: day, sent: 0, opened: 0, bounced: 0 };
+    byDate[day].sent += 1;
+    if (row.is_read === "1" || row.is_read === 1 || row.is_read === true) byDate[day].opened += 1;
+    if (row.is_failed === "1" || row.is_failed === 1 || row.is_failed === true) byDate[day].bounced += 1;
+  }
+
+  return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
  * Call any Mautic REST API path, e.g. mauticFetch("/api/contacts?limit=1")
  */
 export async function mauticFetch(path) {
