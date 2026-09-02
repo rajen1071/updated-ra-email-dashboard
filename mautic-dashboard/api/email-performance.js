@@ -1,4 +1,4 @@
-import { mauticFetch, getEmailStats } from "./_lib/mauticClient.js";
+import { mauticFetch, getEmailStats, getEmailDailyTrend } from "./_lib/mauticClient.js";
 import { PRIMARY_DASHBOARD_EMAIL_ID } from "../src/config/mauticMapping.js";
 
 export default async function handler(req, res) {
@@ -14,14 +14,13 @@ export default async function handler(req, res) {
       { stage: "Bounced", value: stats.bounced, pct: stats.sent ? (stats.bounced / stats.sent) * 100 : 0 },
     ];
 
-    // Trend = daily stats for this email, pulled from Mautic's email stat
-    // timeline endpoint. Mautic returns time-series data under
-    // /api/emails/{id}/stats — shape can vary by Mautic version, so we
-    // pass the raw series through and let the frontend format it.
+    // Trend = daily Sent/Opened/Bounced counts for the last 30 days,
+    // built from Mautic's generic Stats API (raw email_stats rows,
+    // aggregated by day). Mautic has no public per-email time-series
+    // endpoint, so this is the closest public-API equivalent.
     let trend = [];
     try {
-      const statData = await mauticFetch(`/api/emails/${PRIMARY_DASHBOARD_EMAIL_ID}/stats`);
-      trend = statData?.stats || [];
+      trend = await getEmailDailyTrend(PRIMARY_DASHBOARD_EMAIL_ID, 30);
     } catch (e) {
       trend = [];
     }
