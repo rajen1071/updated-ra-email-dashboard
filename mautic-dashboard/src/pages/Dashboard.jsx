@@ -14,6 +14,7 @@ import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { cleanEmailTitle } from "../lib/text";
 
 export default function Dashboard() {
   const summary = useApiData("/api/dashboard-summary");
@@ -89,11 +90,13 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={perf.data.trend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1E2C42" />
-                  <XAxis dataKey="dateAdded" stroke="#8593A8" fontSize={11} />
+                  <XAxis dataKey="date" stroke="#8593A8" fontSize={11} />
                   <YAxis stroke="#8593A8" fontSize={11} />
                   <Tooltip contentStyle={{ background: "#111D30", border: "1px solid #1E2C42" }} />
                   <Legend />
-                  <Area type="monotone" dataKey="count" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.15} name="Events" />
+                  <Area type="monotone" dataKey="sent" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.1} name="Sent" />
+                  <Area type="monotone" dataKey="opened" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} name="Opened" />
+                  <Area type="monotone" dataKey="bounced" stroke="#F97316" fill="#F97316" fillOpacity={0.15} name="Bounced" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -214,11 +217,11 @@ export default function Dashboard() {
               <div className="text-sm space-y-2">
                 <div className="flex justify-between text-gray-300">
                   <span>Latest Newsletter</span>
-                  <span className="text-gray-200">{newsletterBlog.data.newsletter[0]?.name || "—"}</span>
+                  <span className="text-gray-200">{cleanEmailTitle(newsletterBlog.data.newsletter[0]?.name) || "—"}</span>
                 </div>
                 <div className="flex justify-between text-gray-300">
                   <span>Latest Blog</span>
-                  <span className="text-gray-200">{newsletterBlog.data.blog[0]?.name || "—"}</span>
+                  <span className="text-gray-200">{cleanEmailTitle(newsletterBlog.data.blog[0]?.name) || "—"}</span>
                 </div>
               </div>
             )}
