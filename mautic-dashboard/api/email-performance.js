@@ -14,13 +14,13 @@ export default async function handler(req, res) {
       { stage: "Bounced", value: stats.bounced, pct: stats.sent ? (stats.bounced / stats.sent) * 100 : 0 },
     ];
 
-    // Trend = daily Sent/Opened/Bounced counts for the last 30 days,
-    // built from Mautic's generic Stats API (raw email_stats rows,
-    // aggregated by day). Mautic has no public per-email time-series
-    // endpoint, so this is the closest public-API equivalent.
+    // Trend = daily Sent/Opened/Bounced counts, built from Mautic's generic
+    // Stats API (raw email_stats rows, aggregated by day). Mautic has no
+    // public per-email time-series endpoint, so this is the closest
+    // public-API equivalent. Window is controlled by ?days= (default 15).
     let trend = [];
     try {
-      trend = await getEmailDailyTrend(PRIMARY_DASHBOARD_EMAIL_ID, 30);
+      trend = await getEmailDailyTrend(PRIMARY_DASHBOARD_EMAIL_ID, req.query.days || 15);
     } catch (e) {
       trend = [];
     }
