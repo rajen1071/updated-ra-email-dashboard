@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, FileText, Send, MailCheck, Eye, MousePointerClick, MailX, UserX } from "lucide-react";
 import {
@@ -17,8 +18,10 @@ import { useApiData } from "../hooks/useApiData";
 import { cleanEmailTitle } from "../lib/text";
 
 export default function Dashboard() {
+  const [trendDays, setTrendDays] = useState(15);
+
   const summary = useApiData("/api/dashboard-summary");
-  const perf = useApiData("/api/email-performance");
+  const perf = useApiData(`/api/email-performance?days=${trendDays}`);
   const categories = useApiData("/api/categories");
   const forms = useApiData("/api/form-submissions");
   const nurture = useApiData("/api/nurture-emails");
@@ -78,7 +81,18 @@ export default function Dashboard() {
           </div>
 
           <div className="card p-5 xl:col-span-2">
-            <h3 className="text-sm font-semibold text-white mb-4">Email Performance Trend</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Email Performance Trend</h3>
+              <select
+                value={trendDays}
+                onChange={(e) => setTrendDays(Number(e.target.value))}
+                className="bg-white/5 border border-border text-xs text-gray-300 rounded-md px-2 py-1"
+              >
+                <option value={7}>Last 7 days</option>
+                <option value={15}>Last 15 days</option>
+                <option value={30}>Last 30 days</option>
+              </select>
+            </div>
             {perf.loading && <LoadingState label="Loading trend..." />}
             {perf.error && <ErrorState message={perf.error} />}
             {perf.data && perf.data.trend.length === 0 && (
