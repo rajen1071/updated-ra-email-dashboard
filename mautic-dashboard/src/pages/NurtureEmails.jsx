@@ -40,33 +40,45 @@ export default function NurtureEmails() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-muted text-xs border-b border-border">
-                    <th className="py-3 pr-4 font-medium">#</th>
-                    <th className="py-3 pr-4 font-medium">Nurture Email</th>
-                    <th className="py-3 pr-4 font-medium">Variant A (Sent/Open/Click)</th>
-                    <th className="py-3 pr-4 font-medium">Open % / Click %</th>
-                    <th className="py-3 pr-4 font-medium">Variant B (Sent/Open/Click)</th>
-                    <th className="py-3 pr-4 font-medium">Open % / Click %</th>
-                    <th className="py-3 font-medium">Winner</th>
+                  <tr className="text-left text-muted text-xs">
+                    <th className="py-2 pr-4 font-medium" rowSpan={2}>#</th>
+                    <th className="py-2 pr-4 font-medium" rowSpan={2}>Nurture Email</th>
+                    <th className="py-2 pr-4 font-bold text-accent-blue text-center" colSpan={5}>
+                      Variant A
+                    </th>
+                    <th className="py-2 pr-4 font-bold text-accent-pink text-center" colSpan={5}>
+                      Variant B
+                    </th>
+                    <th className="py-2 font-medium" rowSpan={2}>Winner</th>
+                  </tr>
+                  <tr className="text-left text-muted text-xs">
+                    <th className="pb-2 pr-4 font-medium">Sent</th>
+                    <th className="pb-2 pr-4 font-medium">Open</th>
+                    <th className="pb-2 pr-4 font-medium">Open %</th>
+                    <th className="pb-2 pr-4 font-medium">Click</th>
+                    <th className="pb-2 pr-4 font-medium">Click %</th>
+                    <th className="pb-2 pr-4 font-medium">Sent</th>
+                    <th className="pb-2 pr-4 font-medium">Open</th>
+                    <th className="pb-2 pr-4 font-medium">Open %</th>
+                    <th className="pb-2 pr-4 font-medium">Click</th>
+                    <th className="pb-2 pr-4 font-medium">Click %</th>
                   </tr>
                 </thead>
                 <tbody>
                   {d.nurtureEmails.map((n) => (
-                    <tr key={n.step} className="border-b border-border/60 hover:bg-white/[0.02]">
+                    <tr key={n.step} className="hover:bg-white/[0.02]">
                       <td className="py-3 pr-4 text-muted">{n.step}</td>
                       <td className="py-3 pr-4 text-gray-200 font-medium">{n.name}</td>
-                      <td className="py-3 pr-4 text-gray-300">
-                        {n.variantA.sent} / {n.variantA.opened} / {n.variantA.clicked}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-300">
-                        {n.variantA.openRate}% / {n.variantA.clickRate}%
-                      </td>
-                      <td className="py-3 pr-4 text-gray-300">
-                        {n.variantB.sent} / {n.variantB.opened} / {n.variantB.clicked}
-                      </td>
-                      <td className="py-3 pr-4 text-gray-300">
-                        {n.variantB.openRate}% / {n.variantB.clickRate}%
-                      </td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantA.sent}</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantA.opened}</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantA.openRate}%</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantA.clicked}</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantA.clickRate}%</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantB.sent}</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantB.opened}</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantB.openRate}%</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantB.clicked}</td>
+                      <td className="py-3 pr-4 text-gray-300">{n.variantB.clickRate}%</td>
                       <td className="py-3"><WinnerBadge winner={n.winner} /></td>
                     </tr>
                   ))}
