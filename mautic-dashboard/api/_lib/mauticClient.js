@@ -64,9 +64,11 @@ async function getAccessToken() {
  * ourselves (pulling ALL-time rows for a high-volume email would be
  * far too slow/large for a live request).
  */
-export async function getEmailDailyTrend(emailId, days = 30) {
+export async function getEmailDailyTrend(emailId, days = 15) {
+  const safeDays = Math.min(Math.max(parseInt(days, 10) || 15, 7), 90);
+
   const since = new Date();
-  since.setDate(since.getDate() - days);
+  since.setDate(since.getDate() - safeDays);
   const sinceStr = since.toISOString().slice(0, 10);
 
   const params = new URLSearchParams();
@@ -83,11 +85,19 @@ export async function getEmailDailyTrend(emailId, days = 30) {
   const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
   const rows = data?.stats || [];
 
+  // Start every day in the window at zero, so the chart is an accurate,
+  // continuous daily timeline — not just the days that happened to have sends.
   const byDate = {};
+  for (let i = 0; i <= safeDays; i++) {
+    const d = new Date(since);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    byDate[key] = { date: key, sent: 0, opened: 0, bounced: 0 };
+  }
+
   for (const row of rows) {
     const day = (row.date_sent || "").slice(0, 10);
-    if (!day) continue;
-    if (!byDate[day]) byDate[day] = { date: day, sent: 0, opened: 0, bounced: 0 };
+    if (!day || !byDate[day]) continue;
     byDate[day].sent += 1;
     if (row.is_read === "1" || row.is_read === 1 || row.is_read === true) byDate[day].opened += 1;
     if (row.is_failed === "1" || row.is_failed === 1 || row.is_failed === true) byDate[day].bounced += 1;
