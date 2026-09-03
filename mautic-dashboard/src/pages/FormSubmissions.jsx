@@ -52,11 +52,25 @@ export default function FormSubmissions() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-muted text-xs border-b border-border">
-                    <th className="py-3 pr-4 font-medium">Form Name</th>
-                    <th className="py-3 pr-4 font-medium">Submissions</th>
-                    <th className="py-3 pr-4 font-medium">Email Status</th>
-                    <th className="py-3 pr-4 font-medium">User: Sent / Delivered / Opened / Clicked</th>
-                    <th className="py-3 font-medium">Internal: Sent / Delivered / Opened / Clicked</th>
+                    <th className="py-2 pr-4 font-medium" rowSpan={2}>Form Name</th>
+                    <th className="py-2 pr-4 font-medium" rowSpan={2}>Submissions</th>
+                    <th className="py-2 pr-4 font-medium" rowSpan={2}>Email Status</th>
+                    <th className="py-2 pr-4 font-bold text-accent-blue text-center border-l border-border" colSpan={4}>
+                      User
+                    </th>
+                    <th className="py-2 font-bold text-accent-teal text-center border-l border-border" colSpan={4}>
+                      Internal
+                    </th>
+                  </tr>
+                  <tr className="text-left text-muted text-xs border-b border-border">
+                    <th className="pb-2 pr-4 font-medium border-l border-border">Sent</th>
+                    <th className="pb-2 pr-4 font-medium">Delivered</th>
+                    <th className="pb-2 pr-4 font-medium">Opened</th>
+                    <th className="pb-2 pr-4 font-medium">Clicked</th>
+                    <th className="pb-2 pr-4 font-medium border-l border-border">Sent</th>
+                    <th className="pb-2 pr-4 font-medium">Delivered</th>
+                    <th className="pb-2 pr-4 font-medium">Opened</th>
+                    <th className="pb-2 font-medium">Clicked</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -65,16 +79,14 @@ export default function FormSubmissions() {
                       <td className="py-3 pr-4 text-accent-blue font-medium">{f.formName}</td>
                       <td className="py-3 pr-4 text-gray-200">{f.submissions.toLocaleString()}</td>
                       <td className="py-3 pr-4"><EmailStatusBadge status={f.emailStatus} /></td>
-                      <td className="py-3 pr-4 text-gray-300">
-                        {f.userEmail
-                          ? `${f.userEmail.sent} / ${f.userEmail.delivered} / ${f.userEmail.opened} / ${f.userEmail.clicked}`
-                          : "—"}
-                      </td>
-                      <td className="py-3 text-gray-300">
-                        {f.internalEmail
-                          ? `${f.internalEmail.sent} / ${f.internalEmail.delivered} / ${f.internalEmail.opened} / ${f.internalEmail.clicked}`
-                          : "—"}
-                      </td>
+                      <td className="py-3 pr-4 text-gray-300 border-l border-border/60">{f.userEmail ? f.userEmail.sent : "—"}</td>
+                      <td className="py-3 pr-4 text-gray-300">{f.userEmail ? f.userEmail.delivered : "—"}</td>
+                      <td className="py-3 pr-4 text-gray-300">{f.userEmail ? f.userEmail.opened : "—"}</td>
+                      <td className="py-3 pr-4 text-gray-300">{f.userEmail ? f.userEmail.clicked : "—"}</td>
+                      <td className="py-3 pr-4 text-gray-300 border-l border-border/60">{f.internalEmail ? f.internalEmail.sent : "—"}</td>
+                      <td className="py-3 pr-4 text-gray-300">{f.internalEmail ? f.internalEmail.delivered : "—"}</td>
+                      <td className="py-3 pr-4 text-gray-300">{f.internalEmail ? f.internalEmail.opened : "—"}</td>
+                      <td className="py-3 text-gray-300">{f.internalEmail ? f.internalEmail.clicked : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
