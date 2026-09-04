@@ -314,9 +314,19 @@ export async function getFormName(formId) {
 }
 
 /**
- * Get DNC (do-not-contact) contact count.
+ * Get DNC (do-not-contact) count for the email channel.
+ * NOTE: "search=dnc:email" is NOT a real/documented Mautic contact search
+ * filter — Mautic has no native DNC search command (a known long-standing
+ * gap, see mautic/mautic#4977). The reliable source is the dedicated
+ * lead_donotcontact table, available via the generic Stats API.
  */
 export async function getDncCount() {
-  const data = await mauticFetch(`/api/contacts?search=${encodeURIComponent("dnc:email")}&limit=1`);
-  return data.total ? Number(data.total) : 0;
+  const params = new URLSearchParams();
+  params.set("where[0][col]", "channel");
+  params.set("where[0][expr]", "eq");
+  params.set("where[0][val]", "email");
+  params.set("limit", "1");
+
+  const data = await mauticFetch(`/api/stats/lead_donotcontact?${params.toString()}`);
+  return data?.total ? Number(data.total) : 0;
 }
