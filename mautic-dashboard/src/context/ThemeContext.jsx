@@ -6,6 +6,7 @@ export const THEMES = [
   { id: "emerald", label: "Emerald" },
   { id: "royal", label: "Royal Purple" },
   { id: "charcoal", label: "Charcoal Orange" },
+  { id: "light", label: "Light" },
 ];
 
 const ThemeContext = createContext(null);
