@@ -1,4 +1,5 @@
 import { CheckCircle2, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
 import { LoadingState, ErrorState } from "../components/StateViews";
@@ -76,7 +77,11 @@ export default function FormSubmissions() {
                 <tbody>
                   {forms.data.forms.map((f) => (
                     <tr key={f.formId} className="hover:bg-white/[0.02]">
-                      <td className="py-3 pr-4 text-accent-blue font-medium">{f.formName}</td>
+                      <td className="py-3 pr-4 font-medium">
+                        <Link to={`/form-submissions/${f.formId}`} className="text-accent-blue hover:underline">
+                          {f.formName}
+                        </Link>
+                      </td>
                       <td className="py-3 pr-4 text-gray-200">{f.submissions.toLocaleString()}</td>
                       <td className="py-3 pr-4"><EmailStatusBadge status={f.emailStatus} /></td>
                       <td className="py-3 pr-4 text-gray-300">{f.userEmail ? f.userEmail.sent : "—"}</td>
