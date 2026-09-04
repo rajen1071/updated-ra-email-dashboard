@@ -25,7 +25,7 @@ function NavItem({ to, label, icon: Icon }) {
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
           isActive
-            ? "bg-accent-blue/15 text-accent-blue font-medium"
+            ? "bg-brand/15 text-brand font-medium"
             : "text-muted hover:bg-white/5 hover:text-gray-200"
         }`
       }
