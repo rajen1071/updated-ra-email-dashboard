@@ -232,24 +232,59 @@ export default function Dashboard() {
             {nurture.loading && <LoadingState label="Loading nurture emails..." />}
             {nurture.error && <ErrorState message={nurture.error} />}
             {nurture.data && (
-              <div className="grid grid-cols-4 gap-3 mb-4">
-                <div className="text-center">
-                  <div className="text-xl font-bold text-white">{nurture.data.totalNurtureEmails}</div>
-                  <div className="text-[11px] text-muted">Total Emails</div>
+              <>
+                <div className="grid grid-cols-4 gap-3 mb-4">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-white">{nurture.data.totalNurtureEmails}</div>
+                    <div className="text-[11px] text-muted">Total Emails</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-white">{nurture.data.totalVariants}</div>
+                    <div className="text-[11px] text-muted">Total Variants</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-accent-orange">{nurture.data.avgOpenRate}%</div>
+                    <div className="text-[11px] text-muted">Avg Open Rate</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-accent-green">{nurture.data.avgClickRate}%</div>
+                    <div className="text-[11px] text-muted">Avg Click Rate</div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-white">{nurture.data.totalVariants}</div>
-                  <div className="text-[11px] text-muted">Total Variants</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-accent-orange">{nurture.data.avgOpenRate}%</div>
-                  <div className="text-[11px] text-muted">Avg Open Rate</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-accent-green">{nurture.data.avgClickRate}%</div>
-                  <div className="text-[11px] text-muted">Avg Click Rate</div>
-                </div>
-              </div>
+
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-muted text-xs border-b border-border">
+                      <th className="py-2 pr-3 font-medium">#</th>
+                      <th className="py-2 pr-3 font-medium">Nurture Email</th>
+                      <th className="py-2 pr-3 font-medium">Sent (A+B)</th>
+                      <th className="py-2 pr-3 font-medium">Opened (A+B)</th>
+                      <th className="py-2 font-medium">Winner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nurture.data.nurtureEmails.slice(0, 5).map((n) => (
+                      <tr key={n.step} className="border-b border-border/60">
+                        <td className="py-2 pr-3 text-muted">{n.step}</td>
+                        <td className="py-2 pr-3 text-gray-200">{n.name}</td>
+                        <td className="py-2 pr-3 text-gray-300">
+                          {(n.variantA.sent + n.variantB.sent).toLocaleString()}
+                        </td>
+                        <td className="py-2 pr-3 text-gray-300">
+                          {(n.variantA.opened + n.variantB.opened).toLocaleString()}
+                        </td>
+                        <td className="py-2">
+                          {n.winner === "-" ? (
+                            <span className="text-muted">—</span>
+                          ) : (
+                            <span className="text-accent-green font-medium">Variant {n.winner}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </div>
 
