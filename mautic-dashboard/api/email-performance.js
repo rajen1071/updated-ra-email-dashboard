@@ -17,10 +17,11 @@ export default async function handler(req, res) {
     // Trend = daily Sent/Opened/Bounced counts, built from Mautic's generic
     // Stats API (raw email_stats rows, aggregated by day). Mautic has no
     // public per-email time-series endpoint, so this is the closest
-    // public-API equivalent. Window is controlled by ?days= (default 15).
+    // public-API equivalent. Range is controlled by ?from=YYYY-MM-DD and
+    // ?to=YYYY-MM-DD (defaults to the last 15 days if not given).
     let trend = [];
     try {
-      trend = await getEmailDailyTrend(PRIMARY_DASHBOARD_EMAIL_ID, req.query.days || 15);
+      trend = await getEmailDailyTrend(PRIMARY_DASHBOARD_EMAIL_ID, req.query.from, req.query.to);
     } catch (e) {
       trend = [];
     }
