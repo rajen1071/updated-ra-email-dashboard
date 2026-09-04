@@ -15,7 +15,7 @@ export default function FormSubmitters() {
         onRefresh={data.refetch}
       />
       <div className="p-6 space-y-4">
-        <Link to="/form-submissions" className="text-xs text-accent-blue hover:underline">
+        <Link to="/form-submissions" className="text-xs text-brand hover:underline">
           ← Back to Form Submissions
         </Link>
 
