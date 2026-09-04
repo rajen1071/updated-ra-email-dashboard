@@ -260,14 +260,32 @@ export default function Dashboard() {
             {newsletterBlog.loading && <LoadingState label="Loading newsletter/blog..." />}
             {newsletterBlog.error && <ErrorState message={newsletterBlog.error} />}
             {newsletterBlog.data && (
-              <div className="text-sm space-y-2">
-                <div className="flex justify-between text-gray-300">
-                  <span>Latest Newsletter</span>
-                  <span className="text-gray-200">{cleanEmailTitle(newsletterBlog.data.newsletter[0]?.name) || "—"}</span>
+              <div className="text-sm space-y-4">
+                <div>
+                  <div className="text-muted text-xs uppercase tracking-wide mb-1">Latest Newsletter</div>
+                  <div className="text-gray-100">
+                    {cleanEmailTitle(newsletterBlog.data.newsletter[0]?.name) || "—"}
+                  </div>
+                  {newsletterBlog.data.newsletter[0] && (
+                    <div className="text-xs text-muted mt-1">
+                      Sent {newsletterBlog.data.newsletter[0].sent.toLocaleString()} · Opened{" "}
+                      {newsletterBlog.data.newsletter[0].opened.toLocaleString()} (
+                      {newsletterBlog.data.newsletter[0].openRate})
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between text-gray-300">
-                  <span>Latest Blog</span>
-                  <span className="text-gray-200">{cleanEmailTitle(newsletterBlog.data.blog[0]?.name) || "—"}</span>
+                <div>
+                  <div className="text-muted text-xs uppercase tracking-wide mb-1">Latest Blog</div>
+                  <div className="text-gray-100">
+                    {cleanEmailTitle(newsletterBlog.data.blog[0]?.name) || "—"}
+                  </div>
+                  {newsletterBlog.data.blog[0] && (
+                    <div className="text-xs text-muted mt-1">
+                      Sent {newsletterBlog.data.blog[0].sent.toLocaleString()} · Opened{" "}
+                      {newsletterBlog.data.blog[0].opened.toLocaleString()} (
+                      {newsletterBlog.data.blog[0].openRate})
+                    </div>
+                  )}
                 </div>
               </div>
             )}
