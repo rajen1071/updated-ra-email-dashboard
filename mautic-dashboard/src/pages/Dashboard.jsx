@@ -169,7 +169,11 @@ export default function Dashboard() {
                   <tbody>
                     {forms.data.forms.map((f) => (
                       <tr key={f.formId} className="border-b border-border/60">
-                        <td className="py-2 pr-3 text-accent-blue">{f.formName}</td>
+                        <td className="py-2 pr-3">
+                          <Link to={`/form-submissions/${f.formId}`} className="text-accent-blue hover:underline">
+                            {f.formName}
+                          </Link>
+                        </td>
                         <td className="py-2 pr-3 text-gray-200">{f.submissions.toLocaleString()}</td>
                         <td className="py-2 pr-3 text-gray-300">{f.userEmail ? f.userEmail.sent.toLocaleString() : "—"}</td>
                         <td className="py-2 pr-3 text-gray-300">{f.userEmail ? f.userEmail.opened.toLocaleString() : "—"}</td>
