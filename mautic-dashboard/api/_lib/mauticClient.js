@@ -251,6 +251,43 @@ export async function getFormSubmissionCount(formId) {
 }
 
 /**
+ * Get individual submitters for a form: First Name, Last Name, Email,
+ * and submission date, pulled from Mautic's form submissions endpoint.
+ * Field aliases vary by form builder setup, so we try the common ones.
+ */
+function pickField(results, aliases) {
+  if (!results) return "";
+  for (const alias of aliases) {
+    if (results[alias] != null && results[alias] !== "") return results[alias];
+  }
+  return "";
+}
+
+export async function getFormSubmissions(formId, limit = 500) {
+  const data = await mauticFetch(`/api/forms/${formId}/submissions?limit=${limit}`);
+  const rows = data?.submissions || [];
+
+  return rows.map((row) => {
+    const results = row.results || {};
+    return {
+      id: row.id,
+      firstName: pickField(results, ["first_name", "firstname", "fname", "First Name"]),
+      lastName: pickField(results, ["last_name", "lastname", "lname", "Last Name"]),
+      email: pickField(results, ["email", "e_mail", "Email"]),
+      dateSubmitted: row.dateSubmitted || null,
+    };
+  });
+}
+
+/**
+ * Get a form's basic details (currently just the name).
+ */
+export async function getFormName(formId) {
+  const data = await mauticFetch(`/api/forms/${formId}`);
+  return data?.form?.name || "";
+}
+
+/**
  * Get DNC (do-not-contact) contact count.
  */
 export async function getDncCount() {
