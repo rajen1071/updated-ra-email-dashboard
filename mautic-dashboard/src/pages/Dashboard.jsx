@@ -261,32 +261,81 @@ export default function Dashboard() {
             {newsletterBlog.loading && <LoadingState label="Loading newsletter/blog..." />}
             {newsletterBlog.error && <ErrorState message={newsletterBlog.error} />}
             {newsletterBlog.data && (
-              <div className="text-sm space-y-4">
+              <div className="text-sm space-y-5">
                 <div>
-                  <div className="text-muted text-xs uppercase tracking-wide mb-1">Latest Newsletter</div>
-                  <div className="text-gray-100">
-                    {cleanEmailTitle(newsletterBlog.data.newsletter[0]?.name) || "—"}
-                  </div>
-                  {newsletterBlog.data.newsletter[0] && (
-                    <div className="text-xs text-muted mt-1">
-                      Sent {newsletterBlog.data.newsletter[0].sent.toLocaleString()} · Opened{" "}
-                      {newsletterBlog.data.newsletter[0].opened.toLocaleString()} (
-                      {newsletterBlog.data.newsletter[0].openRate})
-                    </div>
-                  )}
+                  <div className="text-muted text-xs uppercase tracking-wide mb-2">Latest Newsletter</div>
+                  <table className="w-full table-fixed">
+                    <thead>
+                      <tr className="text-left text-muted text-xs">
+                        <th className="pb-1.5 pr-3 font-medium w-[34%]">Name</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Sent</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Opened</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Open %</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Clicked</th>
+                        <th className="pb-1.5 font-medium w-[14%]">Click %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-1 pr-3 text-gray-100 whitespace-normal break-words align-top">
+                          {cleanEmailTitle(newsletterBlog.data.newsletter[0]?.name) || "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.newsletter[0]?.sent.toLocaleString() ?? "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.newsletter[0]?.opened.toLocaleString() ?? "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.newsletter[0]?.openRate ?? "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.newsletter[0]?.clicked.toLocaleString() ?? "—"}
+                        </td>
+                        <td className="py-1 text-gray-300 align-top">
+                          {newsletterBlog.data.newsletter[0]?.clickRate ?? "—"}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
+
                 <div>
-                  <div className="text-muted text-xs uppercase tracking-wide mb-1">Latest Blog</div>
-                  <div className="text-gray-100">
-                    {cleanEmailTitle(newsletterBlog.data.blog[0]?.name) || "—"}
-                  </div>
-                  {newsletterBlog.data.blog[0] && (
-                    <div className="text-xs text-muted mt-1">
-                      Sent {newsletterBlog.data.blog[0].sent.toLocaleString()} · Opened{" "}
-                      {newsletterBlog.data.blog[0].opened.toLocaleString()} (
-                      {newsletterBlog.data.blog[0].openRate})
-                    </div>
-                  )}
+                  <div className="text-muted text-xs uppercase tracking-wide mb-2">Latest Blog</div>
+                  <table className="w-full table-fixed">
+                    <thead>
+                      <tr className="text-left text-muted text-xs">
+                        <th className="pb-1.5 pr-3 font-medium w-[34%]">Name</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Sent</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Opened</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Open %</th>
+                        <th className="pb-1.5 pr-3 font-medium w-[13%]">Clicked</th>
+                        <th className="pb-1.5 font-medium w-[14%]">Click %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-1 pr-3 text-gray-100 whitespace-normal break-words align-top">
+                          {cleanEmailTitle(newsletterBlog.data.blog[0]?.name) || "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.blog[0]?.sent.toLocaleString() ?? "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.blog[0]?.opened.toLocaleString() ?? "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.blog[0]?.openRate ?? "—"}
+                        </td>
+                        <td className="py-1 pr-3 text-gray-300 align-top">
+                          {newsletterBlog.data.blog[0]?.clicked.toLocaleString() ?? "—"}
+                        </td>
+                        <td className="py-1 text-gray-300 align-top">
+                          {newsletterBlog.data.blog[0]?.clickRate ?? "—"}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
