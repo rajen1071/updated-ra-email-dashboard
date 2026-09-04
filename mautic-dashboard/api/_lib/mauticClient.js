@@ -185,6 +185,30 @@ async function getEmailClickCount(emailId) {
 }
 
 /**
+ * Fetch total bounced (failed) count for one email using Mautic's generic
+ * Stats API against email_stats (is_failed=1). The /api/emails/{id}
+ * object's bounceCount field is unreliable/absent, which is why
+ * "Delivered" (Sent - Bounced) was showing the same as Sent before.
+ */
+async function getEmailBounceCount(emailId) {
+  const params = new URLSearchParams();
+  params.set("where[0][col]", "email_id");
+  params.set("where[0][expr]", "eq");
+  params.set("where[0][val]", String(emailId));
+  params.set("where[1][col]", "is_failed");
+  params.set("where[1][expr]", "eq");
+  params.set("where[1][val]", "1");
+  params.set("limit", "1");
+
+  try {
+    const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
+    return data?.total ? Number(data.total) : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+/**
  * Fetch full stats for a single email by ID.
  * Returns normalized { id, name, sentCount, deliveredCount, readCount (opened),
  * clickCount, bounceCount, unsubscribeCount }
@@ -195,8 +219,10 @@ export async function getEmailStats(emailId) {
 
   const sent = email.sentCount ?? 0;
   const opened = email.readCount ?? 0;
-  const clicked = await getEmailClickCount(emailId);
-  const bounced = email.stats?.bounceCount ?? email.bounceCount ?? 0;
+  const [clicked, bounced] = await Promise.all([
+    getEmailClickCount(emailId),
+    getEmailBounceCount(emailId),
+  ]);
 
   return {
     id: email.id,
