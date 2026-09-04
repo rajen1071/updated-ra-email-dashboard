@@ -64,12 +64,39 @@ async function getAccessToken() {
  * ourselves (pulling ALL-time rows for a high-volume email would be
  * far too slow/large for a live request).
  */
-export async function getEmailDailyTrend(emailId, days = 15) {
-  const safeDays = Math.min(Math.max(parseInt(days, 10) || 15, 7), 90);
+/**
+ * Fetch daily Sent/Opened/Bounced counts for one email between two exact
+ * dates (inclusive), using Mautic's generic Stats API
+ * (GET /api/stats/email_stats). NOTE: Mautic does NOT expose a public
+ * "/api/emails/{id}/stats" time-series endpoint — the daily chart in the
+ * Mautic admin UI is built internally. This is the public-API equivalent:
+ * pull the raw email_stats rows for the chosen date window and aggregate
+ * by day ourselves (pulling ALL-time rows for a high-volume email would
+ * be far too slow/large for a live request, so the range is capped).
+ */
+export async function getEmailDailyTrend(emailId, fromStr, toStr) {
+  const today = new Date();
+  const defaultFrom = new Date(today);
+  defaultFrom.setDate(defaultFrom.getDate() - 15);
 
-  const since = new Date();
-  since.setDate(since.getDate() - safeDays);
-  const sinceStr = since.toISOString().slice(0, 10);
+  let from = fromStr ? new Date(fromStr) : defaultFrom;
+  let to = toStr ? new Date(toStr) : today;
+  if (isNaN(from.getTime())) from = defaultFrom;
+  if (isNaN(to.getTime())) to = today;
+  if (from > to) [from, to] = [to, from]; // swap if picked backwards
+
+  // Cap the range to 90 days so a live request can never time out.
+  const maxRangeMs = 90 * 24 * 60 * 60 * 1000;
+  if (to.getTime() - from.getTime() > maxRangeMs) {
+    from = new Date(to.getTime() - maxRangeMs);
+  }
+
+  const sinceStr = from.toISOString().slice(0, 10);
+  // Mautic's "gte/lte" on date_sent compares full datetimes, so push the
+  // upper bound to the start of the day AFTER "to" to include all of "to".
+  const untilExclusive = new Date(to);
+  untilExclusive.setDate(untilExclusive.getDate() + 1);
+  const untilStr = untilExclusive.toISOString().slice(0, 10);
 
   const params = new URLSearchParams();
   params.set("where[0][col]", "email_id");
@@ -78,6 +105,9 @@ export async function getEmailDailyTrend(emailId, days = 15) {
   params.set("where[1][col]", "date_sent");
   params.set("where[1][expr]", "gte");
   params.set("where[1][val]", sinceStr);
+  params.set("where[2][col]", "date_sent");
+  params.set("where[2][expr]", "lt");
+  params.set("where[2][val]", untilStr);
   params.set("order[0][col]", "date_sent");
   params.set("order[0][dir]", "asc");
   params.set("limit", "5000");
@@ -88,11 +118,11 @@ export async function getEmailDailyTrend(emailId, days = 15) {
   // Start every day in the window at zero, so the chart is an accurate,
   // continuous daily timeline — not just the days that happened to have sends.
   const byDate = {};
-  for (let i = 0; i <= safeDays; i++) {
-    const d = new Date(since);
-    d.setDate(d.getDate() + i);
-    const key = d.toISOString().slice(0, 10);
+  const cursor = new Date(from);
+  while (cursor <= to) {
+    const key = cursor.toISOString().slice(0, 10);
     byDate[key] = { date: key, sent: 0, opened: 0, bounced: 0 };
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   for (const row of rows) {
@@ -130,14 +160,42 @@ export async function mauticFetch(path) {
  * Returns normalized { id, name, sentCount, deliveredCount, readCount (opened),
  * clickCount, bounceCount, unsubscribeCount }
  */
+/**
+ * Fetch total link-click count for one email using Mautic's generic
+ * Stats API against channel_url_trackables (the table that actually
+ * tracks link clicks; the /api/emails/{id} object has no click field).
+ */
+async function getEmailClickCount(emailId) {
+  const params = new URLSearchParams();
+  params.set("where[0][col]", "channel");
+  params.set("where[0][expr]", "eq");
+  params.set("where[0][val]", "email");
+  params.set("where[1][col]", "channel_id");
+  params.set("where[1][expr]", "eq");
+  params.set("where[1][val]", String(emailId));
+  params.set("limit", "500");
+
+  try {
+    const data = await mauticFetch(`/api/stats/channel_url_trackables?${params.toString()}`);
+    const rows = data?.stats || [];
+    return rows.reduce((sum, r) => sum + (parseInt(r.unique_hits, 10) || 0), 0);
+  } catch (e) {
+    return 0;
+  }
+}
+
+/**
+ * Fetch full stats for a single email by ID.
+ * Returns normalized { id, name, sentCount, deliveredCount, readCount (opened),
+ * clickCount, bounceCount, unsubscribeCount }
+ */
 export async function getEmailStats(emailId) {
   const data = await mauticFetch(`/api/emails/${emailId}`);
   const email = data.email || {};
-  const stats = email.stats || {};
 
-  const sent = email.sentCount ?? stats.sentCount ?? 0;
-  const opened = email.readCount ?? stats.readCount ?? 0;
-  const clicked = email.stats?.uniqueClickCount ?? email.clickCount ?? 0;
+  const sent = email.sentCount ?? 0;
+  const opened = email.readCount ?? 0;
+  const clicked = await getEmailClickCount(emailId);
   const bounced = email.stats?.bounceCount ?? email.bounceCount ?? 0;
 
   return {
