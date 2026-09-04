@@ -55,13 +55,42 @@ html, body, #root {
   --color-brand: 245 166 35;    /* #F5A623 orange, matches RA logo */
 }
 
+[data-theme="midnight"],
+[data-theme="slate"],
+[data-theme="emerald"],
+[data-theme="royal"],
+[data-theme="charcoal"],
+:root {
+  --color-text: 229 234 242;    /* #E5EAF2 — light text for all dark themes */
+}
+
+[data-theme="light"] {
+  --color-panel: 255 255 255;   /* #FFFFFF card bg */
+  --color-surface: 244 246 249; /* #F4F6F9 page bg */
+  --color-sidebar: 255 255 255; /* #FFFFFF sidebar */
+  --color-border: 226 232 240;  /* #E2E8F0 */
+  --color-brand: 37 99 235;     /* #2563EB blue */
+  --color-text: 17 24 39;       /* #111827 dark text */
+}
+
 body {
   margin: 0;
   font-family: "Inter", system-ui, sans-serif;
   background-color: rgb(var(--color-surface));
-  color: #E5EAF2;
+  color: rgb(var(--color-text));
   -webkit-font-smoothing: antialiased;
 }
+
+/* The rest of the app was built with fixed light-gray Tailwind text classes
+   (text-white, text-gray-100..400, text-muted) for the dark themes. Rather
+   than rewrite every page, the Light theme flips those specific classes to
+   dark, readable equivalents so text stays legible on a white background. */
+[data-theme="light"] .text-white { color: #0F172A; }
+[data-theme="light"] .text-gray-100 { color: #1E293B; }
+[data-theme="light"] .text-gray-200 { color: #334155; }
+[data-theme="light"] .text-gray-300 { color: #475569; }
+[data-theme="light"] .text-gray-400 { color: #64748B; }
+[data-theme="light"] .text-muted { color: #64748B; }
 
 ::-webkit-scrollbar {
   width: 8px;
