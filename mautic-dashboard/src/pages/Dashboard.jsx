@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { Users, FileText, Send, MailCheck, Eye, MousePointerClick, MailX, UserX } from "lucide-react";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -17,11 +17,23 @@ import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
 import { cleanEmailTitle } from "../lib/text";
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+function daysAgoStr(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function Dashboard() {
-  const [trendDays, setTrendDays] = useState(15);
+  // "applied" range is what's actually sent to the API; "draft" is what the
+  // user is currently picking in the two date inputs, before hitting Save.
+  const [appliedRange, setAppliedRange] = useState({ from: daysAgoStr(15), to: todayStr() });
+  const [draftRange, setDraftRange] = useState(appliedRange);
 
   const summary = useApiData("/api/dashboard-summary");
-  const perf = useApiData(`/api/email-performance?days=${trendDays}`);
+  const perf = useApiData(`/api/email-performance?from=${appliedRange.from}&to=${appliedRange.to}`);
   const categories = useApiData("/api/categories");
   const forms = useApiData("/api/form-submissions");
   const nurture = useApiData("/api/nurture-emails");
@@ -81,17 +93,33 @@ export default function Dashboard() {
           </div>
 
           <div className="card p-5 xl:col-span-2">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-white">Email Performance Trend</h3>
-              <select
-                value={trendDays}
-                onChange={(e) => setTrendDays(Number(e.target.value))}
-                className="bg-white/5 border border-border text-xs text-gray-300 rounded-md px-2 py-1"
-              >
-                <option value={7}>Last 7 days</option>
-                <option value={15}>Last 15 days</option>
-                <option value={30}>Last 30 days</option>
-              </select>
+              <div className="flex items-center gap-2 text-xs text-gray-300">
+                <span className="text-muted">From</span>
+                <input
+                  type="date"
+                  value={draftRange.from}
+                  max={draftRange.to}
+                  onChange={(e) => setDraftRange((r) => ({ ...r, from: e.target.value }))}
+                  className="bg-white/5 border border-border rounded-md px-2 py-1"
+                />
+                <span className="text-muted">To</span>
+                <input
+                  type="date"
+                  value={draftRange.to}
+                  min={draftRange.from}
+                  max={todayStr()}
+                  onChange={(e) => setDraftRange((r) => ({ ...r, to: e.target.value }))}
+                  className="bg-white/5 border border-border rounded-md px-2 py-1"
+                />
+                <button
+                  onClick={() => setAppliedRange(draftRange)}
+                  className="text-accent-blue font-medium hover:underline px-1"
+                >
+                  Save
+                </button>
+              </div>
             </div>
             {perf.loading && <LoadingState label="Loading trend..." />}
             {perf.error && <ErrorState message={perf.error} />}
@@ -102,16 +130,16 @@ export default function Dashboard() {
             )}
             {perf.data && perf.data.trend.length > 0 && (
               <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={perf.data.trend}>
+                <BarChart data={perf.data.trend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1E2C42" />
                   <XAxis dataKey="date" stroke="#8593A8" fontSize={11} />
-                  <YAxis stroke="#8593A8" fontSize={11} />
+                  <YAxis stroke="#8593A8" fontSize={11} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: "#111D30", border: "1px solid #1E2C42" }} />
                   <Legend />
-                  <Area type="monotone" dataKey="sent" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.1} name="Sent" />
-                  <Area type="monotone" dataKey="opened" stroke="#22C55E" fill="#22C55E" fillOpacity={0.15} name="Opened" />
-                  <Area type="monotone" dataKey="bounced" stroke="#F97316" fill="#F97316" fillOpacity={0.15} name="Bounced" />
-                </AreaChart>
+                  <Bar dataKey="sent" fill="#3B82F6" name="Sent" />
+                  <Bar dataKey="opened" fill="#22C55E" name="Opened" />
+                  <Bar dataKey="bounced" fill="#F97316" name="Bounced" />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
