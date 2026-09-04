@@ -4,11 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        panel: "#111D30",
-        surface: "#0A1220",
-        sidebar: "#0A1424",
-        border: "#1E2C42",
+        panel: "rgb(var(--color-panel) / <alpha-value>)",
+        surface: "rgb(var(--color-surface) / <alpha-value>)",
+        sidebar: "rgb(var(--color-sidebar) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
         muted: "#8593A8",
+        brand: "rgb(var(--color-brand) / <alpha-value>)",
         accent: {
           blue: "#3B82F6",
           green: "#22C55E",
