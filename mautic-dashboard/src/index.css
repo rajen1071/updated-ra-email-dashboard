@@ -12,10 +12,53 @@ html, body, #root {
   height: 100%;
 }
 
+/* ---- Theme presets ---- */
+/* Each theme sets: panel (card bg), surface (page bg), sidebar bg, border, brand accent. */
+:root,
+[data-theme="midnight"] {
+  --color-panel: 17 29 48;      /* #111D30 */
+  --color-surface: 10 18 32;    /* #0A1220 */
+  --color-sidebar: 10 20 36;    /* #0A1424 */
+  --color-border: 30 44 66;     /* #1E2C42 */
+  --color-brand: 59 130 246;    /* #3B82F6 blue */
+}
+
+[data-theme="slate"] {
+  --color-panel: 30 33 40;      /* #1E2128 */
+  --color-surface: 22 24 29;    /* #16181D */
+  --color-sidebar: 20 22 27;    /* #14161B */
+  --color-border: 45 49 58;     /* #2D313A */
+  --color-brand: 148 163 184;   /* #94A3B8 slate */
+}
+
+[data-theme="emerald"] {
+  --color-panel: 12 32 27;      /* #0C201B */
+  --color-surface: 7 22 19;     /* #071613 */
+  --color-sidebar: 7 24 20;     /* #071814 */
+  --color-border: 22 51 43;     /* #16332B */
+  --color-brand: 16 185 129;    /* #10B981 emerald */
+}
+
+[data-theme="royal"] {
+  --color-panel: 26 22 46;      /* #1A162E */
+  --color-surface: 17 14 32;    /* #110E20 */
+  --color-sidebar: 15 12 30;    /* #0F0C1E */
+  --color-border: 42 35 68;     /* #2A2344 */
+  --color-brand: 168 85 247;    /* #A855F7 purple */
+}
+
+[data-theme="charcoal"] {
+  --color-panel: 30 27 24;      /* #1E1B18 */
+  --color-surface: 20 18 16;    /* #141210 */
+  --color-sidebar: 18 16 14;    /* #12100E */
+  --color-border: 48 43 38;     /* #302B26 */
+  --color-brand: 245 166 35;    /* #F5A623 orange, matches RA logo */
+}
+
 body {
   margin: 0;
   font-family: "Inter", system-ui, sans-serif;
-  background-color: #0A1220;
+  background-color: rgb(var(--color-surface));
   color: #E5EAF2;
   -webkit-font-smoothing: antialiased;
 }
@@ -37,7 +80,7 @@ table {
 }
 
 .card {
-  background-color: #111D30;
-  border: 1px solid #1E2C42;
+  background-color: rgb(var(--color-panel));
+  border: 1px solid rgb(var(--color-border));
   border-radius: 12px;
 }
