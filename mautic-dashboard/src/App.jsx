@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import EmailByCategory from "./pages/EmailByCategory";
 import FormSubmissions from "./pages/FormSubmissions";
+import FormSubmitters from "./pages/FormSubmitters";
 import NurtureEmails from "./pages/NurtureEmails";
 import NewsletterBlog from "./pages/NewsletterBlog";
 import Deliverability from "./pages/Deliverability";
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/email-by-category" element={<EmailByCategory />} />
             <Route path="/form-submissions" element={<FormSubmissions />} />
+            <Route path="/form-submissions/:formId" element={<FormSubmitters />} />
             <Route path="/nurture-emails" element={<NurtureEmails />} />
             <Route path="/newsletter-blog" element={<NewsletterBlog />} />
             <Route path="/deliverability" element={<Deliverability />} />
