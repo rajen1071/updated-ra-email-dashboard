@@ -47,6 +47,7 @@ export default function Dashboard() {
         title="Mautic Email Dashboard"
         subtitle="Track, Analyze & Optimize Your Email Performance"
         onRefresh={summary.refetch}
+        showBack={false}
       />
 
       <div className="p-6 space-y-6">
@@ -115,7 +116,7 @@ export default function Dashboard() {
                 />
                 <button
                   onClick={() => setAppliedRange(draftRange)}
-                  className="text-accent-blue font-medium hover:underline px-1"
+                  className="text-brand font-medium hover:underline px-1"
                 >
                   Save
                 </button>
@@ -150,7 +151,7 @@ export default function Dashboard() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Form Submission Overview</h3>
-              <Link to="/form-submissions" className="text-xs text-accent-blue hover:underline">View All</Link>
+              <Link to="/form-submissions" className="text-xs text-brand hover:underline">View All</Link>
             </div>
             {forms.loading && <LoadingState label="Loading forms..." />}
             {forms.error && <ErrorState message={forms.error} />}
@@ -189,7 +190,7 @@ export default function Dashboard() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Top Categories (Interest Based Emails)</h3>
-              <Link to="/email-by-category" className="text-xs text-accent-blue hover:underline">View All</Link>
+              <Link to="/email-by-category" className="text-xs text-brand hover:underline">View All</Link>
             </div>
             {categories.loading && <LoadingState label="Loading categories..." />}
             {categories.error && <ErrorState message={categories.error} />}
@@ -226,7 +227,7 @@ export default function Dashboard() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Nurture Email Overview</h3>
-              <Link to="/nurture-emails" className="text-xs text-accent-blue hover:underline">View All</Link>
+              <Link to="/nurture-emails" className="text-xs text-brand hover:underline">View All</Link>
             </div>
             {nurture.loading && <LoadingState label="Loading nurture emails..." />}
             {nurture.error && <ErrorState message={nurture.error} />}
@@ -255,7 +256,7 @@ export default function Dashboard() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Newsletter & Blog Overview</h3>
-              <Link to="/newsletter-blog" className="text-xs text-accent-blue hover:underline">View All</Link>
+              <Link to="/newsletter-blog" className="text-xs text-brand hover:underline">View All</Link>
             </div>
             {newsletterBlog.loading && <LoadingState label="Loading newsletter/blog..." />}
             {newsletterBlog.error && <ErrorState message={newsletterBlog.error} />}
