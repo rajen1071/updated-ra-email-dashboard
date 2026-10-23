@@ -1,7 +1,8 @@
+import { withCache } from "./_lib/cache.js";
 import { getFormSubmissionCount, getEmailStats } from "./_lib/mauticClient.js";
 import { FORMS, FORM_EMAILS } from "../src/config/mauticMapping.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     const rows = await Promise.all(
       FORMS.map(async (form) => {
@@ -78,3 +79,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export default withCache(handler);

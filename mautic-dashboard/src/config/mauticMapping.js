@@ -68,7 +68,8 @@ export const NURTURE_EMAILS = [
   { step: 11, name: "Leadership, Planning & Long-Term Growth", variantA: 105, variantB: 106 },
   { step: 12, name: "Transformation & Success Stories", variantA: 107, variantB: 108 },
   { step: 13, name: "Industry Leadership & Community Impact", variantA: 109, variantB: 110 },
-  { step: 14, name: "Future of Hospitality", variantA: 111, variantB: 112 },
+  // Step 14 "Future of Hospitality" (111/112) removed — it doesn't exist
+  // in Mautic. Add it back here once the emails are created.
 ];
 
 // Newsletter / Blog — these are NOT fixed IDs. A new email is created

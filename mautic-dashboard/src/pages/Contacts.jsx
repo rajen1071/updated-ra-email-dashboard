@@ -12,6 +12,8 @@ export default function Contacts() {
         title="Contacts"
         subtitle="Contacts carrying the Sign_Up tag"
         onRefresh={summary.refetch}
+        refreshing={summary.loading}
+        lastUpdated={summary.data?.cachedAt}
       />
       <div className="p-6 space-y-6">
         {summary.loading && <LoadingState />}

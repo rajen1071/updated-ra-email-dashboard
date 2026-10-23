@@ -1,7 +1,8 @@
+import { withCache } from "./_lib/cache.js";
 import { getEmailStats, countContactsByTag, getFormSubmissionCount, getDncCount } from "./_lib/mauticClient.js";
 import { PRIMARY_DASHBOARD_EMAIL_ID, TOTAL_CONTACTS_TAG, FORMS } from "../src/config/mauticMapping.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     const [emailStats, totalContacts, dnc, formCounts] = await Promise.all([
       getEmailStats(PRIMARY_DASHBOARD_EMAIL_ID),
@@ -30,3 +31,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export default withCache(handler);

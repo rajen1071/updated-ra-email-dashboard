@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, Download, RefreshCw, ArrowLeft } from "lucide-react";
 import ThemeSwitcher from "./ThemeSwitcher";
 
-export default function Topbar({ title, subtitle, onRefresh, showBack = true }) {
+export default function Topbar({ title, subtitle, onRefresh, refreshing = false, lastUpdated, showBack = true }) {
   return (
     <div className="border-b border-border">
       {showBack && (
@@ -32,12 +32,18 @@ export default function Topbar({ title, subtitle, onRefresh, showBack = true }) 
             <Download size={15} />
             Export PDF
           </button>
+          {lastUpdated && (
+            <span className="text-xs text-muted">
+              Updated {new Date(lastUpdated).toLocaleString()}
+            </span>
+          )}
           <button
             onClick={onRefresh}
-            className="p-2 rounded-lg card text-gray-300 hover:bg-white/5"
-            title="Refresh"
+            disabled={refreshing}
+            className="p-2 rounded-lg card text-gray-300 hover:bg-white/5 disabled:opacity-60"
+            title="Refresh data from Mautic"
           >
-            <RefreshCw size={15} />
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
           </button>
         </div>
       </div>

@@ -1,7 +1,8 @@
+import { withCache } from "./_lib/cache.js";
 import { getEmailStats, getDncCount } from "./_lib/mauticClient.js";
 import { PRIMARY_DASHBOARD_EMAIL_ID } from "../src/config/mauticMapping.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     const [stats, dnc] = await Promise.all([
       getEmailStats(PRIMARY_DASHBOARD_EMAIL_ID),
@@ -30,3 +31,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export default withCache(handler);

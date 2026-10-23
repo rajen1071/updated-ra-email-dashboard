@@ -30,6 +30,8 @@ export default function FormSubmissions() {
         title="Form Submissions"
         subtitle="Sign Up, Contact Us, Job Post, Job Apply — submissions & confirmation/internal email tracking"
         onRefresh={forms.refetch}
+        refreshing={forms.loading}
+        lastUpdated={forms.data?.cachedAt}
       />
 
       <div className="p-6 space-y-6">

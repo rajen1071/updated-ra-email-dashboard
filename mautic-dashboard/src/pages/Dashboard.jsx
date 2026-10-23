@@ -40,13 +40,17 @@ export default function Dashboard() {
   const newsletterBlog = useApiData("/api/newsletter-blog");
 
   const s = summary.data;
+  const refreshAll = () =>
+    [summary, perf, categories, forms, nurture, newsletterBlog].forEach((d) => d.refetch());
 
   return (
     <div>
       <Topbar
         title="Mautic Email Dashboard"
         subtitle="Track, Analyze & Optimize Your Email Performance"
-        onRefresh={summary.refetch}
+        onRefresh={refreshAll}
+        refreshing={summary.loading}
+        lastUpdated={s?.cachedAt}
         showBack={false}
       />
 
@@ -268,10 +272,10 @@ export default function Dashboard() {
                         <td className="py-2 pr-3 text-muted">{n.step}</td>
                         <td className="py-2 pr-3 text-gray-200">{n.name}</td>
                         <td className="py-2 pr-3 text-gray-300">
-                          {(n.variantA.sent + n.variantB.sent).toLocaleString()}
+                          {((n.variantA?.sent ?? 0) + (n.variantB?.sent ?? 0)).toLocaleString()}
                         </td>
                         <td className="py-2 pr-3 text-gray-300">
-                          {(n.variantA.opened + n.variantB.opened).toLocaleString()}
+                          {((n.variantA?.opened ?? 0) + (n.variantB?.opened ?? 0)).toLocaleString()}
                         </td>
                         <td className="py-2">
                           {n.winner === "-" ? (

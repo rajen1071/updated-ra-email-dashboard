@@ -11,6 +11,8 @@ export default function EmailByCategory() {
         title="Email By Category"
         subtitle="Interest-based emails triggered by website navigation tags"
         onRefresh={categories.refetch}
+        refreshing={categories.loading}
+        lastUpdated={categories.data?.cachedAt}
       />
       <div className="p-6">
         <div className="card p-5">

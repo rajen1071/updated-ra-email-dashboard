@@ -1,34 +1,52 @@
-import { getEmailStats } from "./_lib/mauticClient.js";
+import { withCache } from "./_lib/cache.js";
+import { getEmailStatsIfExists, getEmailFirstSentDate } from "./_lib/mauticClient.js";
 import { NURTURE_EMAILS } from "../src/config/mauticMapping.js";
 
-export default async function handler(req, res) {
+// Stats + real send date for one variant, or null if it was deleted in Mautic.
+async function loadVariant(id) {
+  const stats = await getEmailStatsIfExists(id);
+  if (!stats) return null;
+  const dateSent = await getEmailFirstSentDate(id);
+  const openRate = stats.sent ? (stats.opened / stats.sent) * 100 : 0;
+  const clickRate = stats.sent ? (stats.clicked / stats.sent) * 100 : 0;
+  return {
+    id,
+    sent: stats.sent,
+    opened: stats.opened,
+    clicked: stats.clicked,
+    openRate: openRate.toFixed(1),
+    clickRate: clickRate.toFixed(1),
+    dateSent,
+  };
+}
+
+async function handler(req, res) {
   try {
-    const rows = await Promise.all(
+    const results = await Promise.all(
       NURTURE_EMAILS.map(async (n) => {
-        const [a, b] = await Promise.all([getEmailStats(n.variantA), getEmailStats(n.variantB)]);
+        const [a, b] = await Promise.all([loadVariant(n.variantA), loadVariant(n.variantB)]);
+        // Only show steps that still exist in Mautic.
+        if (!a && !b) return null;
 
-        const openRateA = a.sent ? (a.opened / a.sent) * 100 : 0;
-        const openRateB = b.sent ? (b.opened / b.sent) * 100 : 0;
-        const clickRateA = a.sent ? (a.clicked / a.sent) * 100 : 0;
-        const clickRateB = b.sent ? (b.clicked / b.sent) * 100 : 0;
+        const winner =
+          !a || !b || Number(a.clickRate) === Number(b.clickRate)
+            ? "-"
+            : Number(a.clickRate) > Number(b.clickRate) ? "A" : "B";
 
-        const winner = clickRateA === clickRateB ? "-" : clickRateA > clickRateB ? "A" : "B";
+        // The step's send date is whichever variant went out first.
+        const dateSent = [a?.dateSent, b?.dateSent].filter(Boolean).sort()[0] ?? null;
 
-        return {
-          step: n.step,
-          name: n.name,
-          variantA: { id: n.variantA, sent: a.sent, opened: a.opened, clicked: a.clicked, openRate: openRateA.toFixed(1), clickRate: clickRateA.toFixed(1) },
-          variantB: { id: n.variantB, sent: b.sent, opened: b.opened, clicked: b.clicked, openRate: openRateB.toFixed(1), clickRate: clickRateB.toFixed(1) },
-          winner,
-        };
+        return { step: n.step, name: n.name, variantA: a, variantB: b, dateSent, winner };
       })
     );
+    const rows = results.filter(Boolean);
+    const variants = rows.flatMap((r) => [r.variantA, r.variantB]).filter(Boolean);
 
-    const totals = rows.reduce(
-      (acc, r) => {
-        acc.sent += r.variantA.sent + r.variantB.sent;
-        acc.opened += r.variantA.opened + r.variantB.opened;
-        acc.clicked += r.variantA.clicked + r.variantB.clicked;
+    const totals = variants.reduce(
+      (acc, v) => {
+        acc.sent += v.sent;
+        acc.opened += v.opened;
+        acc.clicked += v.clicked;
         return acc;
       },
       { sent: 0, opened: 0, clicked: 0 }
@@ -40,7 +58,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       nurtureEmails: rows,
       totalNurtureEmails: rows.length,
-      totalVariants: rows.length * 2,
+      totalVariants: variants.length,
       totalSent: totals.sent,
       avgOpenRate: totals.sent ? ((totals.opened / totals.sent) * 100).toFixed(1) : "0",
       avgClickRate: totals.sent ? ((totals.clicked / totals.sent) * 100).toFixed(1) : "0",
@@ -50,3 +68,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export default withCache(handler);

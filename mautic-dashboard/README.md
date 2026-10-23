@@ -31,9 +31,11 @@ reach the browser.** Anyone could open dev tools and steal it. Keeping the
 Mautic calls server-side (in `/api`) keeps the secret safe in Vercel's
 environment variables only.
 
-No database is used. Every page fetches fresh data from Mautic on load —
-simplest possible setup, nothing to host or maintain besides Vercel itself
-(free tier is enough).
+Responses are saved in a Redis database (Upstash, free tier) so pages load
+the saved copy instead of calling Mautic every time. Mautic is only called
+when someone clicks **Refresh** (or nothing is saved yet). See
+`api/_lib/cache.js`. Without Redis configured, an in-memory cache is used
+that lasts until the server restarts.
 
 ---
 
@@ -108,20 +110,16 @@ MAUTIC_CLIENT_SECRET=your_client_secret
 
 ### 4. Run locally
 
-Because this project uses Vercel serverless functions (`/api`), the plain
-`vite dev` server can't run them. Use the Vercel CLI instead, which runs
-both the frontend and the `/api` functions together:
-
 ```bash
-npm install -g vercel
-vercel dev
+npm run dev
 ```
 
-This starts the app at `http://localhost:3000` with working `/api` routes.
+This starts the app at `http://localhost:5173`. A small plugin in
+`vite.config.js` runs the `/api` functions inside the Vite dev server and
+reads the `MAUTIC_*` values from `.env`, so no Vercel CLI is needed.
+Restart the server after editing `.env`.
 
-(If you only want to preview the UI without a working backend, `npm run dev`
-still works — the pages will just show a connection error where data would
-normally appear, until Mautic credentials are set.)
+(`vercel dev` also still works if you prefer to mirror Vercel exactly.)
 
 ---
 
@@ -135,6 +133,10 @@ normally appear, until Mautic credentials are set.)
    `MAUTIC_CLIENT_SECRET`) with your real values.
 4. Deploy. Vercel auto-detects the Vite frontend and the `/api` functions —
    no extra config needed beyond `vercel.json` (already included).
+5. Add the cache database: **Project → Storage → Create Database** (or
+   **Marketplace**) → **Upstash → Redis** → free plan → connect it to this
+   project. This adds the `KV_REST_API_URL` / `KV_REST_API_TOKEN`
+   variables automatically. Redeploy afterwards.
 
 ---
 

@@ -1,7 +1,8 @@
+import { withCache } from "./_lib/cache.js";
 import { getEmailStats, countContactsByTag } from "./_lib/mauticClient.js";
 import { CATEGORY_EMAILS } from "../src/config/mauticMapping.js";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
     const rows = await Promise.all(
       CATEGORY_EMAILS.map(async (cat) => {
@@ -27,3 +28,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export default withCache(handler);

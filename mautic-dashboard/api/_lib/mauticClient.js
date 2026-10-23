@@ -149,7 +149,9 @@ export async function mauticFetch(path) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Mautic API error (${res.status}) on ${path}: ${text}`);
+    const err = new Error(`Mautic API error (${res.status}) on ${path}: ${text}`);
+    err.status = res.status;
+    throw err;
   }
 
   return res.json();
@@ -234,6 +236,39 @@ export async function getEmailStats(emailId) {
     clicked,
     bounced,
   };
+}
+
+/**
+ * Like getEmailStats, but returns null when the email no longer exists
+ * in Mautic (deleted → 404) instead of throwing. Other errors still throw.
+ */
+export async function getEmailStatsIfExists(emailId) {
+  try {
+    return await getEmailStats(emailId);
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
+}
+
+/**
+ * When an email was actually first sent, as an ISO string (UTC), or null
+ * if it has never been sent. Taken from the earliest email_stats row —
+ * the email object's dateAdded is only when it was created.
+ */
+export async function getEmailFirstSentDate(emailId) {
+  const params = new URLSearchParams();
+  params.set("where[0][col]", "email_id");
+  params.set("where[0][expr]", "eq");
+  params.set("where[0][val]", String(emailId));
+  params.set("order[0][col]", "date_sent");
+  params.set("order[0][dir]", "asc");
+  params.set("limit", "1");
+
+  const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
+  const dateSent = data?.stats?.[0]?.date_sent;
+  // Mautic stores date_sent in UTC as "YYYY-MM-DD HH:MM:SS".
+  return dateSent ? `${dateSent.replace(" ", "T")}Z` : null;
 }
 
 /**

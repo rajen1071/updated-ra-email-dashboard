@@ -13,6 +13,8 @@ export default function FormSubmitters() {
         title={data.data ? data.data.formName : "Form Submitters"}
         subtitle="Everyone who submitted this form — First Name, Last Name, Email"
         onRefresh={data.refetch}
+        refreshing={data.loading}
+        lastUpdated={data.data?.cachedAt}
       />
       <div className="p-6 space-y-4">
         <Link to="/form-submissions" className="text-xs text-brand hover:underline">

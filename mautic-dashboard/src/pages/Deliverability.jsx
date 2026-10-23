@@ -13,6 +13,8 @@ export default function Deliverability() {
         title="Deliverability Overview"
         subtitle="Bounce rate, hard/soft bounce split, and DNC (Do Not Contact) tracking"
         onRefresh={del.refetch}
+        refreshing={del.loading}
+        lastUpdated={del.data?.cachedAt}
       />
 
       <div className="p-6 space-y-6">

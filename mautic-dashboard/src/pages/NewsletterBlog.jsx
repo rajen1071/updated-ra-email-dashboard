@@ -12,7 +12,7 @@ function EmailTable({ rows }) {
         <thead>
           <tr className="text-left text-muted text-xs border-b border-border">
             <th className="py-3 pr-4 font-medium">Email Name</th>
-            <th className="py-3 pr-4 font-medium">Date</th>
+            <th className="py-3 pr-4 font-medium">Date Sent</th>
             <th className="py-3 pr-4 font-medium">Sent</th>
             <th className="py-3 pr-4 font-medium">Delivered</th>
             <th className="py-3 pr-4 font-medium">Opened</th>
@@ -25,7 +25,7 @@ function EmailTable({ rows }) {
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-border/60 hover:bg-white/[0.02]">
               <td className="py-3 pr-4 text-gray-200">{r.name}</td>
-              <td className="py-3 pr-4 text-muted">{r.dateAdded ? new Date(r.dateAdded).toLocaleDateString() : "—"}</td>
+              <td className="py-3 pr-4 text-muted">{r.dateSent ? new Date(r.dateSent).toLocaleDateString() : "Not sent yet"}</td>
               <td className="py-3 pr-4 text-gray-300">{r.sent.toLocaleString()}</td>
               <td className="py-3 pr-4 text-gray-300">{r.delivered.toLocaleString()}</td>
               <td className="py-3 pr-4 text-gray-300">{r.opened.toLocaleString()}</td>
@@ -49,6 +49,8 @@ export default function NewsletterBlog() {
         title="Newsletter & Blog"
         subtitle="Newsletter (every Wednesday) and Blog (every Monday) — matched by email name"
         onRefresh={nb.refetch}
+        refreshing={nb.loading}
+        lastUpdated={nb.data?.cachedAt}
       />
 
       <div className="p-6 space-y-6">

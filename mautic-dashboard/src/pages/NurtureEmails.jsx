@@ -9,6 +9,26 @@ function WinnerBadge({ winner }) {
   return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${color}`}>{winner}</span>;
 }
 
+// One variant's 5 columns; a variant deleted in Mautic shows as "—".
+function VariantCells({ v }) {
+  if (!v) {
+    return (
+      <td className="py-3 pr-4 text-muted text-center" colSpan={5}>
+        —
+      </td>
+    );
+  }
+  return (
+    <>
+      <td className="py-3 pr-4 text-gray-300">{v.sent}</td>
+      <td className="py-3 pr-4 text-gray-300">{v.opened}</td>
+      <td className="py-3 pr-4 text-gray-300">{v.openRate}%</td>
+      <td className="py-3 pr-4 text-gray-300">{v.clicked}</td>
+      <td className="py-3 pr-4 text-gray-300">{v.clickRate}%</td>
+    </>
+  );
+}
+
 export default function NurtureEmails() {
   const nurture = useApiData("/api/nurture-emails");
   const d = nurture.data;
@@ -17,8 +37,10 @@ export default function NurtureEmails() {
     <div>
       <Topbar
         title="Nurture Emails"
-        subtitle="14 weekly nurture emails, each with a 2-variant A/B test"
+        subtitle="Weekly nurture emails, each with a 2-variant A/B test"
         onRefresh={nurture.refetch}
+        refreshing={nurture.loading}
+        lastUpdated={nurture.data?.cachedAt}
       />
 
       <div className="p-6 space-y-6">
@@ -43,6 +65,7 @@ export default function NurtureEmails() {
                   <tr className="text-left text-muted text-xs">
                     <th className="py-2 pr-4 font-medium" rowSpan={2}>#</th>
                     <th className="py-2 pr-4 font-medium" rowSpan={2}>Nurture Email</th>
+                    <th className="py-2 pr-4 font-medium" rowSpan={2}>Date Sent</th>
                     <th className="py-2 pr-4 font-bold text-accent-blue text-center" colSpan={5}>
                       Variant A
                     </th>
@@ -69,16 +92,11 @@ export default function NurtureEmails() {
                     <tr key={n.step} className="hover:bg-white/[0.02]">
                       <td className="py-3 pr-4 text-muted">{n.step}</td>
                       <td className="py-3 pr-4 text-gray-200 font-medium">{n.name}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantA.sent}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantA.opened}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantA.openRate}%</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantA.clicked}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantA.clickRate}%</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantB.sent}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantB.opened}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantB.openRate}%</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantB.clicked}</td>
-                      <td className="py-3 pr-4 text-gray-300">{n.variantB.clickRate}%</td>
+                      <td className="py-3 pr-4 text-muted whitespace-nowrap">
+                        {n.dateSent ? new Date(n.dateSent).toLocaleDateString() : "Not sent yet"}
+                      </td>
+                      <VariantCells v={n.variantA} />
+                      <VariantCells v={n.variantB} />
                       <td className="py-3"><WinnerBadge winner={n.winner} /></td>
                     </tr>
                   ))}
