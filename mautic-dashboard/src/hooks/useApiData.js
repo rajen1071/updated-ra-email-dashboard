@@ -1,53 +1,116 @@
 import { useEffect, useState } from "react";
 
-// Responses already loaded in this browser tab, keyed by path, so
-// switching pages shows them instantly instead of fetching again.
-const loaded = new Map();
+/**
+ * Browser-side copy of API responses, so the dashboard never waits when
+ * switching sections or reloading the page:
+ *  - memory:  responses loaded in this tab (instant page switches)
+ *  - storage: the same responses in localStorage (instant after a reload)
+ * A copy read from storage is quietly synced once per tab with the copy
+ * saved on the server (api/_lib/cache.js) — that does NOT call Mautic.
+ * Only refetch() — the Refresh button — pulls fresh data from Mautic.
+ */
+const STORAGE_PREFIX = "api-cache:v1:";
+const memory = new Map(); // path -> response
+const synced = new Set(); // paths fetched from the server in this tab
+const inflight = new Map(); // request key -> promise, so requests are shared
+
+function readStored(path) {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + path);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(path, data) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + path, JSON.stringify(data));
+  } catch {
+    // Storage full or unavailable — the in-memory copy still works.
+  }
+}
+
+function getCached(path) {
+  if (!memory.has(path)) {
+    const stored = readStored(path);
+    if (stored) memory.set(path, stored);
+  }
+  return memory.get(path) ?? null;
+}
+
+function load(path, refresh = false) {
+  const key = refresh ? `${path}#refresh` : path;
+  if (inflight.has(key)) return inflight.get(key);
+
+  const url = refresh ? `${path}${path.includes("?") ? "&" : "?"}refresh=1` : path;
+  const request = fetch(url)
+    .then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed (${res.status})`);
+      }
+      return res.json();
+    })
+    .then((json) => {
+      memory.set(path, json);
+      synced.add(path);
+      writeStored(path, json);
+      return json;
+    })
+    .finally(() => inflight.delete(key));
+
+  inflight.set(key, request);
+  return request;
+}
+
+/** Load sections in the background so opening them later is instant. */
+export function prefetch(paths) {
+  for (const path of paths) {
+    if (!synced.has(path)) load(path).catch(() => {});
+  }
+}
 
 /**
  * useApiData("/api/dashboard-summary")
  * Calls one of our own Vercel serverless functions (which in turn talk
  * to Mautic). Returns { data, loading, error, refetch }.
- *
- * Normal loads get the copy saved on the server (see api/_lib/cache.js).
- * refetch() — the Refresh button — asks the server to pull fresh data
- * from Mautic and save it.
  */
 export function useApiData(path) {
-  const [data, setData] = useState(() => loaded.get(path) ?? null);
-  const [loading, setLoading] = useState(!loaded.has(path));
+  const [data, setData] = useState(() => getCached(path));
+  const [loading, setLoading] = useState(() => !getCached(path));
   const [error, setError] = useState(null);
   // Set by refetch(); only forces a refresh for the path it was made for.
   const [refreshRequest, setRefreshRequest] = useState(null);
 
   useEffect(() => {
     const refresh = refreshRequest?.path === path;
-    if (!refresh && loaded.has(path)) {
-      setData(loaded.get(path));
+    const cached = getCached(path);
+    setError(null);
+
+    if (!refresh && cached && synced.has(path)) {
+      setData(cached);
       setLoading(false);
-      setError(null);
       return;
     }
 
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+    // Show any copy we have right away; only spin when there's nothing
+    // to show yet, or when the user asked for a refresh.
+    if (cached && !refresh) {
+      setData(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
-    const url = refresh ? `${path}${path.includes("?") ? "&" : "?"}refresh=1` : path;
-    fetch(url)
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `Request failed (${res.status})`);
-        }
-        return res.json();
-      })
+    let cancelled = false;
+    load(path, refresh)
       .then((json) => {
-        loaded.set(path, json);
         if (!cancelled) setData(json);
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message);
+        // A failed background sync keeps showing the copy we already have.
+        if (!cancelled && (refresh || !cached)) setError(err.message);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
