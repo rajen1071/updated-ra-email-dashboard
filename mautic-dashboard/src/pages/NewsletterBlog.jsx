@@ -1,6 +1,7 @@
 import Topbar from "../components/Topbar";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { useDateRange } from "../context/DateRangeContext";
 
 function EmailTable({ rows }) {
   if (!rows || rows.length === 0) {
@@ -41,7 +42,8 @@ function EmailTable({ rows }) {
 }
 
 export default function NewsletterBlog() {
-  const nb = useApiData("/api/newsletter-blog");
+  const { withRange } = useDateRange();
+  const nb = useApiData(withRange("/api/newsletter-blog"));
 
   return (
     <div>

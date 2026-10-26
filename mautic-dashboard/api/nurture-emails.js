@@ -1,10 +1,11 @@
 import { withCache } from "./_lib/cache.js";
+import { rangeFromQuery } from "./_lib/dateRange.js";
 import { getEmailStatsIfExists, getEmailFirstSentDate } from "./_lib/mauticClient.js";
 import { NURTURE_EMAILS } from "../src/config/mauticMapping.js";
 
 // Stats + real send date for one variant, or null if it was deleted in Mautic.
-async function loadVariant(id) {
-  const stats = await getEmailStatsIfExists(id);
+async function loadVariant(id, range) {
+  const stats = await getEmailStatsIfExists(id, range);
   if (!stats) return null;
   const dateSent = await getEmailFirstSentDate(id);
   const openRate = stats.sent ? (stats.opened / stats.sent) * 100 : 0;
@@ -22,9 +23,10 @@ async function loadVariant(id) {
 
 async function handler(req, res) {
   try {
+    const range = rangeFromQuery(req.query);
     const results = await Promise.all(
       NURTURE_EMAILS.map(async (n) => {
-        const [a, b] = await Promise.all([loadVariant(n.variantA), loadVariant(n.variantB)]);
+        const [a, b] = await Promise.all([loadVariant(n.variantA, range), loadVariant(n.variantB, range)]);
         // Only show steps that still exist in Mautic.
         if (!a && !b) return null;
 

@@ -2,6 +2,7 @@ import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { useDateRange } from "../context/DateRangeContext";
 
 function WinnerBadge({ winner }) {
   if (winner === "-") return <span className="text-xs text-muted">—</span>;
@@ -30,7 +31,8 @@ function VariantCells({ v }) {
 }
 
 export default function NurtureEmails() {
-  const nurture = useApiData("/api/nurture-emails");
+  const { withRange } = useDateRange();
+  const nurture = useApiData(withRange("/api/nurture-emails"));
   const d = nurture.data;
 
   return (

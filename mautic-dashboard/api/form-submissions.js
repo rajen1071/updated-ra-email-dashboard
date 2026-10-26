@@ -1,12 +1,14 @@
 import { withCache } from "./_lib/cache.js";
+import { rangeFromQuery } from "./_lib/dateRange.js";
 import { getFormSubmissionCount, getEmailStats } from "./_lib/mauticClient.js";
 import { FORMS, FORM_EMAILS } from "../src/config/mauticMapping.js";
 
 async function handler(req, res) {
   try {
+    const range = rangeFromQuery(req.query);
     const rows = await Promise.all(
       FORMS.map(async (form) => {
-        const submissions = await getFormSubmissionCount(form.id);
+        const submissions = await getFormSubmissionCount(form.id, range);
         const emailPair = FORM_EMAILS.find((fe) => fe.formId === form.id);
 
         let userEmail = null;
@@ -14,8 +16,8 @@ async function handler(req, res) {
 
         if (emailPair) {
           [userEmail, internalEmail] = await Promise.all([
-            getEmailStats(emailPair.confirmationEmailId),
-            getEmailStats(emailPair.internalEmailId),
+            getEmailStats(emailPair.confirmationEmailId, range),
+            getEmailStats(emailPair.internalEmailId, range),
           ]);
         }
 

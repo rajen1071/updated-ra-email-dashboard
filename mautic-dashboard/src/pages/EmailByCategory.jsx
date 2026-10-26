@@ -1,9 +1,11 @@
 import Topbar from "../components/Topbar";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { useDateRange } from "../context/DateRangeContext";
 
 export default function EmailByCategory() {
-  const categories = useApiData("/api/categories");
+  const { withRange } = useDateRange();
+  const categories = useApiData(withRange("/api/categories"));
 
   return (
     <div>

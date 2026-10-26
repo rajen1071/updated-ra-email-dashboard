@@ -2,10 +2,12 @@ import { useParams, Link } from "react-router-dom";
 import Topbar from "../components/Topbar";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { useDateRange } from "../context/DateRangeContext";
 
 export default function FormSubmitters() {
+  const { withRange } = useDateRange();
   const { formId } = useParams();
-  const data = useApiData(`/api/form-submitters?formId=${formId}`);
+  const data = useApiData(withRange(`/api/form-submitters?formId=${formId}`));
 
   return (
     <div>

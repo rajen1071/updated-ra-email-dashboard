@@ -7,6 +7,7 @@ import {
   Send,
   Newspaper,
   ShieldAlert,
+  MailX,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -17,7 +18,8 @@ const mainNav = [
   { to: "/form-submissions", label: "Form Submissions", icon: FileText },
   { to: "/nurture-emails", label: "Nurture Emails", icon: Send },
   { to: "/newsletter-blog", label: "Newsletter & Blog", icon: Newspaper },
-  { to: "/deliverability", label: "Deliverability (Bounce/DNC)", icon: ShieldAlert },
+  { to: "/deliverability", label: "Deliverability (Bounced/DNC)", icon: ShieldAlert },
+  { to: "/bounced-contacts", label: "Bounced Contacts", icon: MailX },
 ];
 
 const STORAGE_KEY = "sidebar-collapsed";

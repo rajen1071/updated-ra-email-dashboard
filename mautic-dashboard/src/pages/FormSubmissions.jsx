@@ -4,6 +4,7 @@ import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { useDateRange } from "../context/DateRangeContext";
 
 function EmailStatusBadge({ status }) {
   if (status === "sent") {
@@ -21,7 +22,8 @@ function EmailStatusBadge({ status }) {
 }
 
 export default function FormSubmissions() {
-  const forms = useApiData("/api/form-submissions");
+  const { withRange } = useDateRange();
+  const forms = useApiData(withRange("/api/form-submissions"));
   const t = forms.data?.totals;
 
   return (

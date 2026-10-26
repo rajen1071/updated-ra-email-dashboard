@@ -1,14 +1,16 @@
 import { withCache } from "./_lib/cache.js";
+import { rangeFromQuery } from "./_lib/dateRange.js";
 import { getEmailStats, countContactsByTag } from "./_lib/mauticClient.js";
 import { CATEGORY_EMAILS } from "../src/config/mauticMapping.js";
 
 async function handler(req, res) {
   try {
+    const range = rangeFromQuery(req.query);
     const rows = await Promise.all(
       CATEGORY_EMAILS.map(async (cat) => {
         const [stats, contacts] = await Promise.all([
-          getEmailStats(cat.emailId),
-          countContactsByTag(cat.tag),
+          getEmailStats(cat.emailId, range),
+          countContactsByTag(cat.tag, range),
         ]);
         return {
           category: cat.category,

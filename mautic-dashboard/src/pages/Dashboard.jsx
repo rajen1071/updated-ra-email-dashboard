@@ -1,45 +1,41 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Users, FileText, Send, MailCheck, Eye, MousePointerClick, MailX, UserX } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
 import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
+import TrendChart from "../components/TrendChart";
+import BouncedVsDnc from "../components/BouncedVsDnc";
 import { LoadingState, ErrorState } from "../components/StateViews";
 import { useApiData } from "../hooks/useApiData";
+import { useDateRange, dayStr, displayDay } from "../context/DateRangeContext";
 import { cleanEmailTitle } from "../lib/text";
+import { METRICS } from "../config/metricDefinitions";
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-function daysAgoStr(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+// The trend chart is daily, so the API caps it at 90 days
+// (api/email-performance.js); with "All time" it shows the 90 days up to
+// the email's last send. Say which days are charted, and why.
+const MAX_TREND_DAYS = 90;
+
+function trendNote(range, data) {
+  if (!data?.trendFrom) return null;
+  const shown = `${displayDay(data.trendFrom)} – ${displayDay(data.trendTo)}`;
+  if (!range) return `${shown} · 90 days up to the last send`;
+  const days = (new Date(range.to) - new Date(range.from)) / 86400000 + 1;
+  return days > MAX_TREND_DAYS ? `${shown} · last ${MAX_TREND_DAYS} days of the selected range` : shown;
 }
 
 export default function Dashboard() {
-  // "applied" range is what's actually sent to the API; "draft" is what the
-  // user is currently picking in the two date inputs, before hitting Save.
-  const [appliedRange, setAppliedRange] = useState({ from: daysAgoStr(15), to: todayStr() });
-  const [draftRange, setDraftRange] = useState(appliedRange);
+  const { range, withRange } = useDateRange();
 
-  const summary = useApiData("/api/dashboard-summary");
-  const perf = useApiData(`/api/email-performance?from=${appliedRange.from}&to=${appliedRange.to}`);
-  const categories = useApiData("/api/categories");
-  const forms = useApiData("/api/form-submissions");
-  const nurture = useApiData("/api/nurture-emails");
-  const newsletterBlog = useApiData("/api/newsletter-blog");
+  const summary = useApiData(withRange("/api/dashboard-summary"));
+  const perf = useApiData(withRange("/api/email-performance"));
+  const categories = useApiData(withRange("/api/categories"));
+  const forms = useApiData(withRange("/api/form-submissions"));
+  const nurture = useApiData(withRange("/api/nurture-emails"));
+  const newsletterBlog = useApiData(withRange("/api/newsletter-blog"));
 
   const s = summary.data;
+  // An all-zero window would draw an empty grid that only shows 0s on hover.
+  const trendHasActivity = perf.data?.trend?.some((d) => d.sent || d.opened || d.clicked || d.bounced) ?? false;
   const refreshAll = () =>
     [summary, perf, categories, forms, nurture, newsletterBlog].forEach((d) => d.refetch());
 
@@ -66,10 +62,11 @@ export default function Dashboard() {
             <StatCard label="DELIVERED" value={s.delivered.toLocaleString()} sub={`${s.deliveryRate}% Delivery Rate`} color="green" icon={MailCheck} />
             <StatCard label="OPENED" value={s.opened.toLocaleString()} sub={`${s.openRate}% Open Rate`} color="orange" icon={Eye} />
             <StatCard label="CLICKED" value={s.clicked.toLocaleString()} sub={`${s.clickRate}% Click Rate`} color="purple" icon={MousePointerClick} />
-            <StatCard label="BOUNCED" value={s.bounced.toLocaleString()} sub={`${s.bounceRate}% Bounce Rate`} color="red" icon={MailX} />
-            <StatCard label="DNC" value={s.dnc.toLocaleString()} color="gray" icon={UserX} />
+            <StatCard label={METRICS.bouncedEmails.label} info={METRICS.bouncedEmails.info} value={s.bounced.toLocaleString()} sub={`${s.bounceRate}% Bounce Rate`} color="red" icon={MailX} />
+            <StatCard label={METRICS.dncContacts.label} info={METRICS.dncContacts.info} value={s.dnc.toLocaleString()} sub="Sign_Up, any reason" color="gray" icon={UserX} />
           </div>
         )}
+        {s && <BouncedVsDnc compact />}
 
         {/* Funnel + Trend */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -84,7 +81,7 @@ export default function Dashboard() {
                   return (
                     <div key={row.stage} className="flex items-center gap-3">
                       <span className={`w-2 h-2 rounded-full ${colors[i]}`} />
-                      <span className="text-sm text-gray-300 w-20">{row.stage}</span>
+                      <span className="text-sm text-gray-300 w-28">{row.stage}</span>
                       <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
                         <div className={`h-full ${colors[i]} rounded-full`} style={{ width: `${Math.min(row.pct, 100)}%` }} />
                       </div>
@@ -100,52 +97,23 @@ export default function Dashboard() {
           <div className="card p-5 xl:col-span-2">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h3 className="text-sm font-semibold text-white">Email Performance Trend</h3>
-              <div className="flex items-center gap-2 text-xs text-gray-300">
-                <span className="text-muted">From</span>
-                <input
-                  type="date"
-                  value={draftRange.from}
-                  max={draftRange.to}
-                  onChange={(e) => setDraftRange((r) => ({ ...r, from: e.target.value }))}
-                  className="bg-white/5 border border-border rounded-md px-2 py-1"
-                />
-                <span className="text-muted">To</span>
-                <input
-                  type="date"
-                  value={draftRange.to}
-                  min={draftRange.from}
-                  max={todayStr()}
-                  onChange={(e) => setDraftRange((r) => ({ ...r, to: e.target.value }))}
-                  className="bg-white/5 border border-border rounded-md px-2 py-1"
-                />
-                <button
-                  onClick={() => setAppliedRange(draftRange)}
-                  className="text-brand font-medium hover:underline px-1"
-                >
-                  Save
-                </button>
-              </div>
+              {trendNote(range, perf.data) && <span className="text-xs text-muted">{trendNote(range, perf.data)}</span>}
             </div>
             {perf.loading && <LoadingState label="Loading trend..." />}
             {perf.error && <ErrorState message={perf.error} />}
-            {perf.data && perf.data.trend.length === 0 && (
-              <div className="text-sm text-muted py-16 text-center">
-                No time-series stat data returned by Mautic for this email yet.
+            {perf.data && !trendHasActivity && (
+              <div className="text-sm text-muted py-16 text-center space-y-1">
+                <div>This email wasn't sent on any day in this period, so there's nothing to chart.</div>
+                {perf.data.lastSent && (
+                  <div className="text-xs">
+                    Last sent {displayDay(dayStr(new Date(perf.data.lastSent)))} — pick a date
+                    range that includes it to see its activity.
+                  </div>
+                )}
               </div>
             )}
-            {perf.data && perf.data.trend.length > 0 && (
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={perf.data.trend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E2C42" />
-                  <XAxis dataKey="date" stroke="#8593A8" fontSize={11} />
-                  <YAxis stroke="#8593A8" fontSize={11} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: "#111D30", border: "1px solid #1E2C42" }} />
-                  <Legend />
-                  <Bar dataKey="sent" fill="#3B82F6" name="Sent" />
-                  <Bar dataKey="opened" fill="#22C55E" name="Opened" />
-                  <Bar dataKey="bounced" fill="#F97316" name="Bounced" />
-                </BarChart>
-              </ResponsiveContainer>
+            {perf.data && trendHasActivity && (
+              <TrendChart data={perf.data.trend} />
             )}
           </div>
         </div>

@@ -18,7 +18,7 @@
 
 // Bump this whenever an endpoint's response shape changes, so copies
 // saved by older code (missing new fields) are ignored, not served.
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 10;
 
 const memoryCache = new Map();
 

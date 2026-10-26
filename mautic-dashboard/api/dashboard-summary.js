@@ -1,14 +1,16 @@
 import { withCache } from "./_lib/cache.js";
+import { rangeFromQuery } from "./_lib/dateRange.js";
 import { getEmailStats, countContactsByTag, getFormSubmissionCount, getDncCount } from "./_lib/mauticClient.js";
 import { PRIMARY_DASHBOARD_EMAIL_ID, TOTAL_CONTACTS_TAG, FORMS } from "../src/config/mauticMapping.js";
 
 async function handler(req, res) {
   try {
+    const range = rangeFromQuery(req.query);
     const [emailStats, totalContacts, dnc, formCounts] = await Promise.all([
-      getEmailStats(PRIMARY_DASHBOARD_EMAIL_ID),
-      countContactsByTag(TOTAL_CONTACTS_TAG),
-      getDncCount(),
-      Promise.all(FORMS.map((f) => getFormSubmissionCount(f.id))),
+      getEmailStats(PRIMARY_DASHBOARD_EMAIL_ID, range),
+      countContactsByTag(TOTAL_CONTACTS_TAG, range),
+      getDncCount(TOTAL_CONTACTS_TAG, range),
+      Promise.all(FORMS.map((f) => getFormSubmissionCount(f.id, range))),
     ]);
 
     const totalFormSubmissions = formCounts.reduce((sum, c) => sum + c, 0);

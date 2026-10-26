@@ -9,10 +9,21 @@ import { useEffect, useState } from "react";
  * saved on the server (api/_lib/cache.js) — that does NOT call Mautic.
  * Only refetch() — the Refresh button — pulls fresh data from Mautic.
  */
-const STORAGE_PREFIX = "api-cache:v1:";
+// Bump when a response's shape changes, so copies saved by older code
+// (missing new fields) are dropped instead of shown.
+const STORAGE_PREFIX = "api-cache:v7:";
 const memory = new Map(); // path -> response
 const synced = new Set(); // paths fetched from the server in this tab
 const inflight = new Map(); // request key -> promise, so requests are shared
+
+// Remove copies saved under older prefixes.
+try {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith("api-cache:") && !key.startsWith(STORAGE_PREFIX)) localStorage.removeItem(key);
+  }
+} catch {
+  // Storage unavailable — nothing to clean up.
+}
 
 function readStored(path) {
   try {

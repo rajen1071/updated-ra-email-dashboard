@@ -13,6 +13,8 @@
  * ------------------------------------------------------------------
  */
 
+import { rangeConditions, isInRange } from "./dateRange.js";
+
 let cachedToken = null;
 let cachedTokenExpiry = 0;
 
@@ -65,7 +67,7 @@ async function getAccessToken() {
  * far too slow/large for a live request).
  */
 /**
- * Fetch daily Sent/Opened/Bounced counts for one email between two exact
+ * Fetch daily Sent/Opened/Clicked/Bounced counts for one email between two exact
  * dates (inclusive), using Mautic's generic Stats API
  * (GET /api/stats/email_stats). NOTE: Mautic does NOT expose a public
  * "/api/emails/{id}/stats" time-series endpoint — the daily chart in the
@@ -98,22 +100,21 @@ export async function getEmailDailyTrend(emailId, fromStr, toStr) {
   untilExclusive.setDate(untilExclusive.getDate() + 1);
   const untilStr = untilExclusive.toISOString().slice(0, 10);
 
-  const params = new URLSearchParams();
-  params.set("where[0][col]", "email_id");
-  params.set("where[0][expr]", "eq");
-  params.set("where[0][val]", String(emailId));
-  params.set("where[1][col]", "date_sent");
-  params.set("where[1][expr]", "gte");
-  params.set("where[1][val]", sinceStr);
-  params.set("where[2][col]", "date_sent");
-  params.set("where[2][expr]", "lt");
-  params.set("where[2][val]", untilStr);
-  params.set("order[0][col]", "date_sent");
-  params.set("order[0][dir]", "asc");
-  params.set("limit", "5000");
-
-  const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
-  const rows = data?.stats || [];
+  // Every send in the window, paged — a single bulk send can be tens of
+  // thousands of rows, so one capped request would drop most of them.
+  // Clicks are link clicks made that day (page_hits), any send.
+  const [rows, hits] = await Promise.all([
+    statsRows("email_stats", [
+      { col: "email_id", expr: "eq", val: emailId },
+      { col: "date_sent", expr: "gte", val: sinceStr },
+      { col: "date_sent", expr: "lt", val: untilStr },
+    ]),
+    statsRows("page_hits", [
+      { col: "email_id", expr: "eq", val: emailId },
+      { col: "date_hit", expr: "gte", val: sinceStr },
+      { col: "date_hit", expr: "lt", val: untilStr },
+    ]).catch(() => []),
+  ]);
 
   // Start every day in the window at zero, so the chart is an accurate,
   // continuous daily timeline — not just the days that happened to have sends.
@@ -121,7 +122,7 @@ export async function getEmailDailyTrend(emailId, fromStr, toStr) {
   const cursor = new Date(from);
   while (cursor <= to) {
     const key = cursor.toISOString().slice(0, 10);
-    byDate[key] = { date: key, sent: 0, opened: 0, bounced: 0 };
+    byDate[key] = { date: key, sent: 0, opened: 0, clicked: 0, bounced: 0 };
     cursor.setDate(cursor.getDate() + 1);
   }
 
@@ -131,6 +132,16 @@ export async function getEmailDailyTrend(emailId, fromStr, toStr) {
     byDate[day].sent += 1;
     if (row.is_read === "1" || row.is_read === 1 || row.is_read === true) byDate[day].opened += 1;
     if (row.is_failed === "1" || row.is_failed === 1 || row.is_failed === true) byDate[day].bounced += 1;
+  }
+
+  // Unique contact per link per day, like the all-time click count.
+  const clickedPerDay = new Set();
+  for (const hit of hits) {
+    const day = (hit.date_hit || "").slice(0, 10);
+    const key = `${day}:${hit.redirect_id}:${hit.lead_id}`;
+    if (!byDate[day] || clickedPerDay.has(key)) continue;
+    clickedPerDay.add(key);
+    byDate[day].clicked += 1;
   }
 
   return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
@@ -158,10 +169,84 @@ export async function mauticFetch(path) {
 }
 
 /**
- * Fetch full stats for a single email by ID.
- * Returns normalized { id, name, sentCount, deliveredCount, readCount (opened),
- * clickCount, bounceCount, unsubscribeCount }
+ * Mautic "where" query params from [{ col, expr, val }]. An array val
+ * (for expr "in") is sent as val[]=1&val[]=2.
  */
+function whereParams(conditions) {
+  const params = new URLSearchParams();
+  conditions.forEach((c, i) => {
+    params.set(`where[${i}][col]`, c.col);
+    params.set(`where[${i}][expr]`, c.expr);
+    if (Array.isArray(c.val)) {
+      for (const v of c.val) params.append(`where[${i}][val][]`, String(v));
+    } else {
+      params.set(`where[${i}][val]`, String(c.val));
+    }
+  });
+  return params;
+}
+
+/** Number of rows in a Stats API table matching the conditions. */
+async function statsTotal(table, conditions) {
+  const params = whereParams(conditions);
+  params.set("limit", "1");
+  const data = await mauticFetch(`/api/stats/${table}?${params.toString()}`);
+  return data?.total ? Number(data.total) : 0;
+}
+
+/** Every row in a Stats API table matching the conditions, paged. */
+async function statsRows(table, conditions, pageSize = 5000, maxPages = 40) {
+  const rows = [];
+  for (let page = 0; page < maxPages; page++) {
+    const params = whereParams(conditions);
+    params.set("start", String(page * pageSize));
+    params.set("limit", String(pageSize));
+    const data = await mauticFetch(`/api/stats/${table}?${params.toString()}`);
+    const batch = data?.stats || [];
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  return rows;
+}
+
+/** Run fn over items with at most `limit` requests in flight. */
+async function mapLimit(items, limit, fn) {
+  const results = Array.from({ length: items.length });
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+function chunk(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+/**
+ * Unique link clicks for one email within a date range, from page_hits
+ * (each tracked link click is a hit with email_id set). Counted as
+ * unique contact per link, matching channel_url_trackables.unique_hits
+ * used for the all-time number.
+ */
+async function getEmailClickCountInRange(emailId, range) {
+  try {
+    const rows = await statsRows("page_hits", [
+      { col: "email_id", expr: "eq", val: emailId },
+      ...rangeConditions("date_hit", range),
+    ]);
+    return new Set(rows.map((r) => `${r.redirect_id}:${r.lead_id}`)).size;
+  } catch (e) {
+    return 0;
+  }
+}
+
 /**
  * Fetch total link-click count for one email using Mautic's generic
  * Stats API against channel_url_trackables (the table that actually
@@ -186,45 +271,208 @@ async function getEmailClickCount(emailId) {
   }
 }
 
-/**
- * Fetch total bounced (failed) count for one email using Mautic's generic
- * Stats API against email_stats (is_failed=1). The /api/emails/{id}
- * object's bounceCount field is unreliable/absent, which is why
- * "Delivered" (Sent - Bounced) was showing the same as Sent before.
+/*
+ * Bounces. Mautic keeps two records of a bounce, and its email page
+ * subtracts both from Sent to get "Delivered" (the dashboard matches it):
+ *  - failed sends: email_stats rows with is_failed=1; the bounce reason
+ *    is inside open_details
+ *  - bounced contacts: lead_donotcontact rows with reason 2 (= bounced);
+ *    the bounce reason is in comments. channel_id is the email whose send
+ *    bounced. A contact has one such row, for the first email that
+ *    bounced — they aren't emailed again after that.
+ * The same bounce usually appears in both, so the total counts most
+ * bounces twice — that is how Mautic itself computes it.
+ *
+ * Hard vs soft comes from the reason text the sending server (Postal /
+ * EmailIt) reports:
+ *  - soft: "Maximum number of delivery attempts (5) has been reached"
+ *    (a temporary problem — mailbox full, server busy — that never
+ *    cleared after 5 tries) or "suppression list (too many soft fails)"
+ *  - hard: everything else — "Permanent SMTP delivery error" (address
+ *    or domain doesn't exist / rejected), "hard bounce", "too many hard
+ *    fails"
  */
-async function getEmailBounceCount(emailId) {
-  const params = new URLSearchParams();
-  params.set("where[0][col]", "email_id");
-  params.set("where[0][expr]", "eq");
-  params.set("where[0][val]", String(emailId));
-  params.set("where[1][col]", "is_failed");
-  params.set("where[1][expr]", "eq");
-  params.set("where[1][val]", "1");
-  params.set("limit", "1");
+const SOFT_BOUNCE_MARKERS = ["delivery attempts", "soft fail"];
+const HARD_BOUNCE_MARKERS = ["Permanent", "hard fail", "hard bounce"];
 
+/** "hard" or "soft" for a bounce reason text. */
+export function bounceType(reason) {
+  const text = String(reason || "").toLowerCase();
+  return SOFT_BOUNCE_MARKERS.some((m) => text.includes(m.toLowerCase())) ? "soft" : "hard";
+}
+
+/** Conditions keeping only hard (or soft) bounces, by reason column. */
+function bounceTypeConditions(col, type) {
+  if (type === "hard") {
+    return SOFT_BOUNCE_MARKERS.map((m) => ({ col, expr: "notLike", val: `%${m}%` }));
+  }
+  if (type === "soft") {
+    return HARD_BOUNCE_MARKERS.map((m) => ({ col, expr: "notLike", val: `%${m}%` }));
+  }
+  return [];
+}
+
+function failedSendConditions(emailId, range) {
+  return [
+    { col: "email_id", expr: "eq", val: emailId },
+    { col: "is_failed", expr: "eq", val: 1 },
+    ...rangeConditions("date_sent", range),
+  ];
+}
+
+function bouncedContactConditions(range, emailId = null) {
+  return [
+    { col: "channel", expr: "eq", val: "email" },
+    ...(emailId == null ? [] : [{ col: "channel_id", expr: "eq", val: emailId }]),
+    { col: "reason", expr: "eq", val: 2 },
+    ...rangeConditions("date_added", range),
+  ];
+}
+
+/**
+ * Total bounced count for one email, the way Mautic's email page counts
+ * it (Delivered = Sent - this). With a date range, failed sends made in
+ * it plus bounces recorded in it.
+ */
+async function getEmailBounceCount(emailId, range = null) {
   try {
-    const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
-    return data?.total ? Number(data.total) : 0;
-  } catch (e) {
+    const [failed, bounced] = await Promise.all([
+      statsTotal("email_stats", failedSendConditions(emailId, range)),
+      statsTotal("lead_donotcontact", bouncedContactConditions(range, emailId)),
+    ]);
+    return failed + bounced;
+  } catch {
     return 0;
   }
 }
 
+const emailNames = new Map(); // email id -> name, kept while the server runs
+
+async function getEmailName(emailId) {
+  if (!emailNames.has(emailId)) {
+    try {
+      const data = await mauticFetch(`/api/emails/${emailId}`);
+      emailNames.set(emailId, data?.email?.name || `Email #${emailId}`);
+    } catch {
+      return `Email #${emailId}`;
+    }
+  }
+  return emailNames.get(emailId);
+}
+
+/**
+ * Contact fields for those of `ids` that carry the tag, keyed by id,
+ * from one "tag:X ids:..." search.
+ */
+async function getTaggedContactsAmong(tag, ids) {
+  if (ids.length === 0) return {};
+  const params = new URLSearchParams({
+    search: `tag:${tag} ids:${ids.join(",")}`,
+    limit: String(ids.length),
+    minimal: "1",
+  });
+  const data = await mauticFetch(`/api/contacts?${params.toString()}`);
+  const contacts = {};
+  for (const c of Object.values(data?.contacts || {})) contacts[String(c.id)] = c.fields?.all || {};
+  return contacts;
+}
+
+/**
+ * One page of bounced contacts that carry `tag` (all emails), newest
+ * first, with the bounce reason, its hard/soft type and the email that
+ * bounced. type: "all" | "hard" | "soft".
+ *
+ * There's no way to ask Mautic for "bounced AND tagged" directly, so
+ * bounce records are read in date order, 100 at a time, keeping the
+ * tagged contacts until the page is full. `cursor` is the record offset
+ * to continue from; the result's nextCursor (null at the end) is the
+ * cursor for the next page.
+ */
+export async function getBouncedContacts({ tag, range = null, type = "all", cursor = 0, pageSize = 50 }) {
+  const batchSize = 100;
+  const where = [
+    ...bouncedContactConditions(range),
+    ...bounceTypeConditions("comments", type === "all" ? null : type),
+  ];
+
+  const kept = [];
+  let offset = cursor;
+  let done = false;
+  for (let batch = 0; batch < 10 && kept.length < pageSize && !done; batch++) {
+    const params = whereParams(where);
+    params.set("start", String(offset));
+    params.set("limit", String(batchSize));
+    params.set("order[0][col]", "date_added");
+    params.set("order[0][dir]", "desc");
+    params.set("order[1][col]", "id");
+    params.set("order[1][dir]", "desc");
+    const data = await mauticFetch(`/api/stats/lead_donotcontact?${params.toString()}`);
+    const records = data?.stats || [];
+
+    const ids = [...new Set(records.map((r) => String(r.lead_id)))];
+    const contacts = await getTaggedContactsAmong(tag, ids);
+
+    let used = 0;
+    for (const r of records) {
+      used++;
+      const contact = contacts[String(r.lead_id)];
+      if (contact) kept.push({ record: r, contact });
+      if (kept.length === pageSize) break;
+    }
+    offset += used;
+    done = records.length < batchSize && used === records.length;
+  }
+
+  const names = await Promise.all(kept.map(({ record }) => getEmailName(record.channel_id)));
+  const rows = kept.map(({ record: r, contact }, i) => ({
+    id: r.id,
+    contactId: r.lead_id,
+    firstName: contact.firstname || "",
+    lastName: contact.lastname || "",
+    email: contact.email || "",
+    type: bounceType(r.comments),
+    reason: r.comments || "",
+    emailId: r.channel_id,
+    emailName: names[i],
+    date: r.date_added ? `${r.date_added.replace(" ", "T")}Z` : null,
+  }));
+
+  return { rows, pageSize, nextCursor: done ? null : offset };
+}
+
 /**
  * Fetch full stats for a single email by ID.
- * Returns normalized { id, name, sentCount, deliveredCount, readCount (opened),
- * clickCount, bounceCount, unsubscribeCount }
+ * Returns normalized { id, name, subject, sent, delivered, opened,
+ * clicked, bounced }.
+ *
+ * With a date range ({ from, to }), only emails SENT in that range are
+ * counted (and how many of those were opened / bounced), counted from
+ * email_stats rows; clicks are link clicks made in that range.
  */
-export async function getEmailStats(emailId) {
+export async function getEmailStats(emailId, range = null) {
   const data = await mauticFetch(`/api/emails/${emailId}`);
   const email = data.email || {};
 
-  const sent = email.sentCount ?? 0;
-  const opened = email.readCount ?? 0;
-  const [clicked, bounced] = await Promise.all([
-    getEmailClickCount(emailId),
-    getEmailBounceCount(emailId),
-  ]);
+  let sent, opened, clicked, bounced;
+  if (range) {
+    const sentInRange = [
+      { col: "email_id", expr: "eq", val: emailId },
+      ...rangeConditions("date_sent", range),
+    ];
+    [sent, opened, bounced, clicked] = await Promise.all([
+      statsTotal("email_stats", sentInRange),
+      statsTotal("email_stats", [...sentInRange, { col: "is_read", expr: "eq", val: 1 }]),
+      getEmailBounceCount(emailId, range),
+      getEmailClickCountInRange(emailId, range),
+    ]);
+  } else {
+    sent = email.sentCount ?? 0;
+    opened = email.readCount ?? 0;
+    [clicked, bounced] = await Promise.all([
+      getEmailClickCount(emailId),
+      getEmailBounceCount(emailId),
+    ]);
+  }
 
   return {
     id: email.id,
@@ -242,9 +490,9 @@ export async function getEmailStats(emailId) {
  * Like getEmailStats, but returns null when the email no longer exists
  * in Mautic (deleted → 404) instead of throwing. Other errors still throw.
  */
-export async function getEmailStatsIfExists(emailId) {
+export async function getEmailStatsIfExists(emailId, range = null) {
   try {
-    return await getEmailStats(emailId);
+    return await getEmailStats(emailId, range);
   } catch (err) {
     if (err.status === 404) return null;
     throw err;
@@ -271,6 +519,18 @@ export async function getEmailFirstSentDate(emailId) {
   return dateSent ? `${dateSent.replace(" ", "T")}Z` : null;
 }
 
+/** When an email was last sent, as an ISO string (UTC), or null. */
+export async function getEmailLastSentDate(emailId) {
+  const params = whereParams([{ col: "email_id", expr: "eq", val: emailId }]);
+  params.set("order[0][col]", "date_sent");
+  params.set("order[0][dir]", "desc");
+  params.set("limit", "1");
+
+  const data = await mauticFetch(`/api/stats/email_stats?${params.toString()}`);
+  const dateSent = data?.stats?.[0]?.date_sent;
+  return dateSent ? `${dateSent.replace(" ", "T")}Z` : null;
+}
+
 /**
  * Fetch multiple emails' stats in parallel.
  */
@@ -294,19 +554,29 @@ export async function findEmailsByNameContains(substring) {
 }
 
 /**
- * Count contacts that carry a given tag.
+ * Count contacts that carry a given tag. With a date range, only
+ * contacts created in that range.
  */
-export async function countContactsByTag(tag) {
-  const data = await mauticFetch(
-    `/api/contacts?search=${encodeURIComponent(`tag:${tag}`)}&limit=1`
-  );
+export async function countContactsByTag(tag, range = null) {
+  const params = whereParams(rangeConditions("date_added", range));
+  params.set("search", `tag:${tag}`);
+  params.set("limit", "1");
+  params.set("minimal", "1");
+  const data = await mauticFetch(`/api/contacts?${params.toString()}`);
   return data.total ? Number(data.total) : 0;
 }
 
 /**
- * Get submission count for a Mautic form.
+ * Get submission count for a Mautic form. With a date range, only
+ * submissions made in that range (from the form_submissions table).
  */
-export async function getFormSubmissionCount(formId) {
+export async function getFormSubmissionCount(formId, range = null) {
+  if (range) {
+    return statsTotal("form_submissions", [
+      { col: "form_id", expr: "eq", val: formId },
+      ...rangeConditions("date_submitted", range),
+    ]);
+  }
   const data = await mauticFetch(`/api/forms/${formId}/submissions?limit=1`);
   return data.total ? Number(data.total) : 0;
 }
@@ -324,9 +594,9 @@ function pickField(results, aliases) {
   return "";
 }
 
-export async function getFormSubmissions(formId, limit = 500) {
+export async function getFormSubmissions(formId, range = null, limit = 500) {
   const data = await mauticFetch(`/api/forms/${formId}/submissions?limit=${limit}`);
-  const rows = data?.submissions || [];
+  const rows = (data?.submissions || []).filter((row) => isInRange(row.dateSubmitted, range));
 
   return rows.map((row) => {
     const results = row.results || {};
@@ -348,20 +618,99 @@ export async function getFormName(formId) {
   return data?.form?.name || "";
 }
 
-/**
- * Get DNC (do-not-contact) count for the email channel.
- * NOTE: "search=dnc:email" is NOT a real/documented Mautic contact search
- * filter — Mautic has no native DNC search command (a known long-standing
- * gap, see mautic/mautic#4977). The reliable source is the dedicated
- * lead_donotcontact table, available via the generic Stats API.
- */
-export async function getDncCount() {
-  const params = new URLSearchParams();
-  params.set("where[0][col]", "channel");
-  params.set("where[0][expr]", "eq");
-  params.set("where[0][val]", "email");
-  params.set("limit", "1");
-
-  const data = await mauticFetch(`/api/stats/lead_donotcontact?${params.toString()}`);
+/** Contacts matching a Mautic contact search, e.g. "tag:Sign_Up dnc:email". */
+async function countContactsBySearch(search) {
+  const params = new URLSearchParams({ search, limit: "1", minimal: "1" });
+  const data = await mauticFetch(`/api/contacts?${params.toString()}`);
   return data?.total ? Number(data.total) : 0;
+}
+
+/** Unique contact IDs with an email DNC row matching the conditions. */
+async function getDncContactIds(conditions) {
+  const rows = await statsRows("lead_donotcontact", [
+    { col: "channel", expr: "eq", val: "email" },
+    ...conditions,
+  ]);
+  return [...new Set(rows.map((r) => String(r.lead_id)).filter((id) => id && id !== "null"))];
+}
+
+/** How many of the given contact IDs carry the tag, 500 IDs per request. */
+async function countTaggedAmong(tag, ids) {
+  const counts = await mapLimit(chunk(ids, 500), 5, (part) =>
+    countContactsBySearch(`tag:${tag} ids:${part.join(",")}`)
+  );
+  return counts.reduce((sum, c) => sum + c, 0);
+}
+
+/**
+ * Get DNC (do-not-contact) count for the email channel, counting only
+ * contacts that carry `tag` (e.g. Sign_Up) — one "tag:X dnc:email"
+ * contact search.
+ *
+ * With a date range, only contacts marked DNC in that range: their IDs
+ * come from the lead_donotcontact table (Stats API) and "tag:X ids:..."
+ * searches count the tagged ones. There are ~100k DNC rows, so when the
+ * range holds most of them it's cheaper to count the ones OUTSIDE the
+ * range and subtract from the all-time count.
+ */
+export async function getDncCount(tag, range = null) {
+  const allTime = await countContactsBySearch(`tag:${tag} dnc:email`);
+  if (!range) return allTime;
+
+  const inRange = rangeConditions("date_added", range);
+  const channel = [{ col: "channel", expr: "eq", val: "email" }];
+  const [rowsInRange, rowsTotal] = await Promise.all([
+    statsTotal("lead_donotcontact", [...channel, ...inRange]),
+    statsTotal("lead_donotcontact", channel),
+  ]);
+  if (rowsInRange === 0) return 0;
+
+  if (rowsInRange <= rowsTotal / 2) {
+    return countTaggedAmong(tag, await getDncContactIds(inRange));
+  }
+
+  const [before, after] = await Promise.all([
+    getDncContactIds([{ col: "date_added", expr: "lt", val: range.from }]),
+    getDncContactIds([{ col: "date_added", expr: "gte", val: inRange[1].val }]),
+  ]);
+  const outside = [...new Set([...before, ...after])];
+  return allTime - (outside.length ? await countTaggedAmong(tag, outside) : 0);
+}
+
+/**
+ * Where the DNC count comes from. Every email do-not-contact record in
+ * Mautic (lead_donotcontact, channel "email") has a reason code:
+ *   1 = unsubscribed (clicked unsubscribe)
+ *   2 = bounced (hard or soft, by the bounce reason text)
+ *   3 = manual (added by a user, an import or a campaign action)
+ * Returns how many contacts carrying `tag` are in each group:
+ * { unsubscribed, hard, soft, manual }. hard + soft = unique bounced
+ * contacts ("Bounced Contacts"). With a date range, only records
+ * added in it. Every record has to be read and the tag checked 500 IDs
+ * per request, so this is slow (~1 min for all ~100k records) — the
+ * response is cached.
+ */
+export async function getDncBreakdown(tag, range = null) {
+  const rows = await statsRows("lead_donotcontact", [
+    { col: "channel", expr: "eq", val: "email" },
+    ...rangeConditions("date_added", range),
+  ]);
+
+  const groups = { unsubscribed: new Set(), hard: new Set(), soft: new Set(), manual: new Set() };
+  for (const r of rows) {
+    if (!r.lead_id) continue;
+    const reason = Number(r.reason);
+    const group = reason === 1 ? "unsubscribed" : reason === 2 ? bounceType(r.comments) : "manual";
+    groups[group].add(String(r.lead_id));
+  }
+  // Bounced Contacts are unique: a contact with both a hard and a soft
+  // bounce record counts once, as hard (the permanent failure wins).
+  for (const id of groups.hard) groups.soft.delete(id);
+
+  // One group at a time, so Mautic gets at most 5 requests at once.
+  const counts = {};
+  for (const [group, ids] of Object.entries(groups)) {
+    counts[group] = ids.size ? await countTaggedAmong(tag, [...ids]) : 0;
+  }
+  return counts;
 }

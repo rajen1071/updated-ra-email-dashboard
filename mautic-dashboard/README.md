@@ -154,7 +154,24 @@ Full detail is in `src/config/mauticMapping.js`.
 | Nurture Emails | 14 email pairs (IDs 85–112), A/B variant comparison |
 | Newsletter | Emails whose name contains "Restaurant Association Newsletter" (searched by name, not fixed ID — a new email is created weekly) |
 | Blog | Emails whose name contains "Blogs \| Blog - 2026" (same reasoning) |
-| Deliverability | Bounce/DNC counts from Email ID 77 + DNC contact count |
+| Deliverability | Bounce counts from Email ID 77 + DNC count (`Sign_Up` contacts only) |
+
+### Date filter & PDF export
+
+The date filter in the top bar applies to every section and is remembered per
+browser. It sends `?from=YYYY-MM-DD&to=YYYY-MM-DD` to every `/api` route
+("All time" sends nothing), and the routes then count only:
+
+- **emails** sent in the range (and how many of those were opened/bounced), plus link clicks made in it
+- **form submissions** made in the range
+- **contacts** (tag counts) created in the range
+- **DNC** contacts marked do-not-contact in the range
+
+The trend chart is daily, so it shows at most the last 90 days of the range.
+**Export PDF** downloads a snapshot of the page you're on.
+
+**DNC** counts only email do-not-contact contacts that carry the `Sign_Up` tag
+(`getDncCount` in `api/_lib/mauticClient.js`).
 
 ### ⚠️ Before going live, double-check this
 
